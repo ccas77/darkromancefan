@@ -1,0 +1,51 @@
+---
+import Base from '../../layouts/Base.astro';
+import { q, audit } from '../../lib/db';
+import { getClient, sha, token } from '../../lib/oauth';
+import { keyMatches } from '../../lib/auth';
+
+const src = Astro.request.method === 'POST' ? new URLSearchParams(Object.fromEntries((await Astro.request.formData()).entries()) as any) : Astro.url.searchParams;
+const p = (k: string) => String(src.get(k) || '');
+const clientId = p('client_id'), redirectUri = p('redirect_uri'), state = p('state'), challenge = p('code_challenge'), method = p('code_challenge_method') || 'S256';
+const client = clientId ? await getClient(clientId) : undefined;
+let error = '';
+if (!client) error = 'This connection request is not recognised. Start again from Claude.';
+else if (!client.redirect_uris.includes(redirectUri)) error = 'This connection request has an unexpected return address.';
+else if (!challenge || method !== 'S256' || p('response_type') !== 'code') error = 'This connection request is missing its security check.';
+
+if (!error && Astro.request.method === 'POST') {
+  if (p('decision') === 'deny') {
+    const u = new URL(redirectUri); u.searchParams.set('error', 'access_denied'); if (state) u.searchParams.set('state', state);
+    return Astro.redirect(u.toString(), 302);
+  }
+  if (!keyMatches(p('key'))) {
+    error = "That admin key didn't match.";
+    await audit('oauth', 'authorize_failed', clientId);
+  } else {
+    const code = token();
+    await q(`INSERT INTO oauth_codes (code_hash, client_id, redirect_uri, code_challenge, expires_at) VALUES ($1,$2,$3,$4, now() + interval '10 minutes')`,
+      [sha(code), clientId, redirectUri, challenge]);
+    await audit('owner', 'connector_authorized', clientId, client!.client_name);
+    const u = new URL(redirectUri); u.searchParams.set('code', code); if (state) u.searchParams.set('state', state);
+    return Astro.redirect(u.toString(), 302);
+  }
+}
+const keep = ['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'response_type', 'scope', 'resource'];
+---
+<Base title="Connect Claude | Dark Romance Fan" noindex>
+  <section class="wrap" style="max-width:520px">
+    <div class="panel" style="margin-top:20px">
+      <div class="eyebrow">Back office</div>
+      <h2>Connect {client?.client_name || 'Claude'} to Dark Romance Fan</h2>
+      <p class="meta">This lets Claude moderate comments, manage books and lists, and draft newsletters, under your Balanced rules. You can disconnect it any time from the admin page.</p>
+      {error && <div class="flash" style="background:#fdecef;border-color:#f3b5c0;color:#8a1020">{error}</div>}
+      {client && client.redirect_uris.includes(redirectUri) && (
+        <form class="form" method="post">
+          {keep.map((k) => p(k) && <input type="hidden" name={k} value={p(k)} />)}
+          <label>Admin key <input type="password" name="key" autocomplete="current-password" autofocus /></label>
+          <div style="display:flex;gap:10px"><button class="btn" name="decision" value="allow">Connect</button><button class="btn ghost" name="decision" value="deny" formnovalidate>Cancel</button></div>
+        </form>
+      )}
+    </div>
+  </section>
+</Base>

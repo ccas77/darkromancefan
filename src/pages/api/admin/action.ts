@@ -18,6 +18,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       case 'ban': await setBan(id, true, 'owner'); break;
       case 'suggestion_close': await q(`UPDATE suggestions SET status='rejected' WHERE id=$1`, [id]); await audit('owner', 'close_suggestion', `suggestion:${id}`); break;
       case 'issue_sent': await q(`UPDATE newsletter_issues SET status='sent', updated_at=now() WHERE id=$1`, [id]); await q(`UPDATE promo_bookings SET status='run' WHERE issue_id=$1`, [id]); await audit('owner', 'mark_issue_sent', `issue:${id}`); break;
+      case 'revoke_connectors': await q(`UPDATE oauth_tokens SET revoked=true WHERE NOT revoked`); await audit('owner', 'revoke_connectors', ''); break;
       case 'logout': cookies.delete('drf_admin', { path: '/' }); break;
     }
   } catch (e) { if (!(e instanceof PolicyError)) throw e; }

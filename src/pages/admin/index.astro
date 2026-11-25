@@ -105,6 +105,10 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
         {d.issues.length === 0 && <tr><td class="meta">No issues drafted yet.</td></tr>}
       </table>
 
+      <h2 style="margin-top:30px">Claude connector</h2>
+      <p class="meta">Address to add in Claude: <code>{Astro.url.origin}/mcp</code>. Claude asks for your admin key once.</p>
+      <form method="post" action="/api/admin/action"><button class="btn small ghost" name="action" value="revoke_connectors">Disconnect all Claude connections</button></form>
+
       <h2 style="margin-top:30px">Activity log</h2>
       <table>
         {d.log.map((l: any) => <tr><td class="meta" style="white-space:nowrap">{fmt(l.created_at)}</td><td><span class="pill">{l.actor}</span></td><td>{l.action}</td><td class="meta">{l.target} {l.details}</td></tr>)}
