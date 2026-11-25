@@ -1,0 +1,115 @@
+---
+import Base from '../../layouts/Base.astro';
+import { isOwner } from '../../lib/auth';
+import { q } from '../../lib/db';
+import { renderComment } from '../../lib/util';
+import { env } from '../../lib/env';
+const owner = isOwner(Astro.cookies);
+let d: any = {};
+if (owner) {
+  const [approvals, held, reports, suggestions, bookings, issues, log, counts] = await Promise.all([
+    q(`SELECT * FROM approvals WHERE status='pending' ORDER BY created_at`),
+    q(`SELECT c.*, m.name, m.email, m.id AS mid, b.title AS book, l.title AS list FROM comments c JOIN commenters m ON m.id=c.commenter_id
+       LEFT JOIN books b ON b.id=c.book_id LEFT JOIN lists l ON l.id=c.list_id WHERE c.status IN ('pending','flagged') ORDER BY c.created_at`),
+    q(`SELECT r.*, c.body FROM reports r JOIN comments c ON c.id=r.comment_id WHERE NOT r.resolved ORDER BY r.created_at`),
+    q(`SELECT s.*, l.title AS list FROM suggestions s LEFT JOIN lists l ON l.id=s.list_id WHERE s.status='pending' ORDER BY s.created_at`),
+    q(`SELECT * FROM promo_bookings ORDER BY created_at DESC LIMIT 30`),
+    q(`SELECT * FROM newsletter_issues ORDER BY created_at DESC LIMIT 10`),
+    q(`SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 60`),
+    q(`SELECT (SELECT count(*)::int FROM signups) AS subs, (SELECT count(*)::int FROM comments WHERE status='approved') AS comments,
+        (SELECT count(*)::int FROM ratings) AS ratings, (SELECT count(*)::int FROM clicks WHERE created_at > now()-interval '7 days') AS clicks7`),
+  ]);
+  d = { approvals, held, reports, suggestions, bookings, issues, log, counts: counts[0] };
+}
+const fmt = (x: any) => new Date(x).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const configured = Boolean(env('ADMIN_KEY') && env('ADMIN_KEY').length >= 24);
+const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reject'], ['comment_spam', 'Spam']];
+---
+<Base title="Admin | Dark Romance Fan" noindex>
+  <section class="wrap" style="padding-top:40px">
+  {!owner ? (
+    <div class="card narrow" style="margin:40px auto">
+      <h2>Admin</h2>
+      {!configured && <p class="flash">Set ADMIN_KEY (24+ characters) in the site settings to enable admin.</p>}
+      {Astro.url.searchParams.get('bad') && <p class="flash">That key didn't match.</p>}
+      <form class="form" method="post" action="/api/admin/login"><label>Admin key <input type="password" name="key" required /></label><div><button class="btn">Sign in</button></div></form>
+    </div>
+  ) : (
+    <>
+      <div style="display:flex;justify-content:space-between;align-items:center"><h1 style="font-size:2.4rem">Back office</h1>
+        <form method="post" action="/api/admin/action"><input type="hidden" name="action" value="logout" /><button class="btn small ghost">Sign out</button></form></div>
+      <p class="meta">Subscribers {d.counts.subs} · Live comments {d.counts.comments} · Ratings {d.counts.ratings} · Buy-link clicks (7 days) {d.counts.clicks7}</p>
+
+      <h2 id="approvals" style="margin-top:30px">Waiting for you ({d.approvals.length})</h2>
+      <p class="meta">Things Claude has prepared but isn't allowed to do on its own: borderline comments, new lists and new books.</p>
+      <table>
+        {d.approvals.map((a: any) => (
+          <tr><td><span class="pill warn">{a.kind}</span></td><td>{a.summary}<div class="meta">requested by {a.requested_by}, {fmt(a.created_at)}</div></td>
+            <td style="white-space:nowrap">
+              <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small" name="action" value="approval_yes">Approve</button></form>
+              <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small ghost" name="action" value="approval_no">Decline</button></form>
+            </td></tr>
+        ))}
+        {d.approvals.length === 0 && <tr><td class="meta">Nothing waiting.</td></tr>}
+      </table>
+
+      <h2 id="queue" style="margin-top:30px">Comment queue ({d.held.length})</h2>
+      <table>
+        {d.held.map((c: any) => (
+          <tr><td><span class={`pill ${c.status === 'flagged' ? 'warn' : ''}`}>{c.status}</span>{c.flags.map((f: string) => <div class="meta">{f}</div>)}</td>
+            <td><strong>{c.name}</strong> <span class="meta">{c.email} · on {c.book || c.list} · {fmt(c.created_at)}</span><div set:html={renderComment(c.body)} /></td>
+            <td style="white-space:nowrap">
+              {commentActions.map(([a, l]) => (
+                <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="anchor" value="queue" /><button class="btn small ghost" name="action" value={a}>{l}</button></form>
+              ))}
+              <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={c.mid} /><input type="hidden" name="anchor" value="queue" /><button class="linkbtn" name="action" value="ban">ban commenter</button></form>
+            </td></tr>
+        ))}
+        {d.held.length === 0 && <tr><td class="meta">Queue is clear.</td></tr>}
+      </table>
+
+      <h2 style="margin-top:30px">Open reports ({d.reports.length})</h2>
+      <table>
+        {d.reports.map((r: any) => <tr><td>Comment #{r.comment_id}</td><td>{r.body}</td><td class="meta">{r.reason || 'no reason given'}</td></tr>)}
+        {d.reports.length === 0 && <tr><td class="meta">None.</td></tr>}
+      </table>
+
+      <h2 style="margin-top:30px">Reader suggestions ({d.suggestions.length})</h2>
+      <table>
+        {d.suggestions.map((s: any) => (
+          <tr><td><strong>{s.title}</strong> {s.author && `by ${s.author}`}<div class="meta">{s.note}</div></td><td class="meta">{s.list || 'general'}</td>
+            <td><form method="post" action="/api/admin/action"><input type="hidden" name="id" value={s.id} /><button class="linkbtn" name="action" value="suggestion_close">dismiss</button></form></td></tr>
+        ))}
+        {d.suggestions.length === 0 && <tr><td class="meta">None.</td></tr>}
+      </table>
+
+      <h2 style="margin-top:30px">Promo bookings</h2>
+      <table>
+        <tr><th>When</th><th>Package</th><th>Author</th><th>Book</th><th>Paid</th><th>Status</th></tr>
+        {d.bookings.map((b: any) => (
+          <tr><td>{fmt(b.created_at)}</td><td>{b.package}</td><td>{b.author_name}<div class="meta">{b.author_email}</div></td>
+            <td>{b.book_title}<div class="meta">{b.book_url}</div></td><td>{(b.amount_cents / 100).toFixed(2)} {b.currency.toUpperCase()}</td>
+            <td><span class="pill">{b.status}</span>{b.notes && <div class="meta">{b.notes}</div>}</td></tr>
+        ))}
+        {d.bookings.length === 0 && <tr><td class="meta" colspan="6">No bookings yet.</td></tr>}
+      </table>
+
+      <h2 style="margin-top:30px">Newsletter issues</h2>
+      <table>
+        {d.issues.map((i: any) => (
+          <tr><td><strong>{i.title}</strong><div class="meta">for {i.send_date || 'no date'}{i.beehiiv_post_id && ' · draft in Beehiiv'}</div>
+            <details><summary class="meta">Show content</summary><pre style="white-space:pre-wrap;font-size:.85rem">{i.content_md}</pre></details></td>
+            <td><span class="pill">{i.status}</span></td>
+            <td>{i.status !== 'sent' && <form method="post" action="/api/admin/action"><input type="hidden" name="id" value={i.id} /><button class="linkbtn" name="action" value="issue_sent">mark as sent</button></form>}</td></tr>
+        ))}
+        {d.issues.length === 0 && <tr><td class="meta">No issues drafted yet.</td></tr>}
+      </table>
+
+      <h2 style="margin-top:30px">Activity log</h2>
+      <table>
+        {d.log.map((l: any) => <tr><td class="meta" style="white-space:nowrap">{fmt(l.created_at)}</td><td><span class="pill">{l.actor}</span></td><td>{l.action}</td><td class="meta">{l.target} {l.details}</td></tr>)}
+      </table>
+    </>
+  )}
+  </section>
+</Base>

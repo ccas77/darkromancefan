@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+import Signup from '../components/Signup.astro';
+import Cover from '../components/Cover.astro';
+import Meters from '../components/Meters.astro';
+import { publishedLists, featuredBooks, recentActivity, allPublishedBooks, ratingsForBooks, listCovers, topTropes, siteCounts } from '../lib/data';
+import { esc } from '../lib/util';
+const [lists, featured, activity, books, covers, tropes, counts] = await Promise.all([publishedLists(), featuredBooks(), recentActivity(), allPublishedBooks(), listCovers(), topTropes(), siteCounts()]);
+const ratings = await ratingsForBooks(books.map((b) => b.id));
+const fan = featured.length >= 3 ? featured.slice(0, 3) : books.slice(0, 3);
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+---
+<Base title="Dark Romance Fan: dark romance books by trope, rated by readers" image={fan[1]?.cover_url}>
+  <div class="hero"><div class="wrap">
+    <div>
+      <div class="eyebrow">For readers who like it dark</div>
+      <h1>Find your next <em>dark romance</em> obsession</h1>
+      <p class="lede">Reading lists by trope, reader ratings for spice and darkness, and content notes before you start.</p>
+      <div class="hero-actions">
+        <a class="btn light" href="/lists">Browse the lists</a>
+        <a class="btn outline-light" href="#signup">Get the weekly email</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong>{counts.books}</strong>books rated</div>
+        <div><strong>{counts.lists}</strong>trope lists</div>
+        <div><strong>18+</strong>no apologies</div>
+      </div>
+    </div>
+    <div class="fan">
+      {fan.map((b, i) => <a href={`/books/${b.slug}`} title={b.title}><Cover book={b} eager={i === 1} /></a>)}
+    </div>
+  </div></div>
+
+  <section class="wrap">
+    <div class="section-head"><div><div class="eyebrow">On the shelf</div><h2>Readers are reaching for</h2></div><a href="/lists">All reading lists →</a></div>
+    <div class="shelf">
+      {books.slice(0, 12).map((b) => (
+        <a class="tile" href={`/books/${b.slug}`}>
+          <Cover book={b} />
+          <h3>{b.title}</h3>
+          <div class="by">{b.author}</div>
+          <Meters rating={ratings[b.id]} />
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <div class="wrap">
+      <div class="section-head"><div><div class="eyebrow">Start here</div><h2>Reading lists by trope</h2></div></div>
+      <div class="lists">
+        {lists.map((l) => (
+          <a class="listcard" href={`/lists/${l.slug}`}>
+            <div class="stack">{(covers[l.id] || []).slice(0, 4).map((c) => <Cover book={c} />)}</div>
+            <h3>{l.title}</h3>
+            <p>{l.intro}</p>
+            <span class="more">{l.book_count} {l.book_count === 1 ? 'book' : 'books'} →</span>
+          </a>
+        ))}
+      </div>
+      {tropes.length > 0 && (
+        <div style="margin-top:34px"><div class="eyebrow">Popular tropes</div>
+          <div class="tags">{tropes.map((t) => <span class="tag">{t.trope}<b>{t.n}</b></span>)}</div></div>
+      )}
+    </div>
+  </section>
+
+  {activity.length > 0 && (
+    <section class="wrap">
+      <div class="section-head"><div><div class="eyebrow">Overheard</div><h2>What readers are saying</h2></div></div>
+      <div class="quotes">
+        {activity.map((a) => (
+          <a class="quote" href={`/books/${a.slug}#comments`}>
+            <Cover book={{ cover_url: a.cover_url, title: a.title }} />
+            <div>
+              <blockquote set:html={'“' + esc(a.body.length > 160 ? a.body.slice(0, 160) + '…' : a.body).replace(/\|\|(.+?)\|\|/gs, '[spoiler]') + '”'} />
+              <div class="meta">{a.name} on <strong>{a.title}</strong></div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <Signup source="home" />
+</Base>

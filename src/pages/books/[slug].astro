@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+import Comments from '../../components/Comments.astro';
+import Signup from '../../components/Signup.astro';
+import Cover from '../../components/Cover.astro';
+import Meters from '../../components/Meters.astro';
+import { bookBySlug, listsForBook, ratingSummary, tropeTally, reactionTally, similarBooks, ratingsForBooks, SPICE, DARK } from '../../lib/data';
+const book = await bookBySlug(Astro.params.slug!);
+if (!book) return new Response('Not found', { status: 404 });
+const [lists, rating, tropes, reacts, similar] = await Promise.all([listsForBook(book.id), ratingSummary(book.id), tropeTally(book.id), reactionTally(book.id), similarBooks(book.id, book.tropes)]);
+const simRatings = await ratingsForBooks(similar.map((b) => b.id));
+const voted = new Map(tropes.map((t) => [t.trope, t.n]));
+const allTropes = [...new Set([...book.tropes, ...tropes.map((t) => t.trope)])].sort((a, b) => (voted.get(b) || 0) - (voted.get(a) || 0));
+const jsonLd: any = { '@context': 'https://schema.org', '@type': 'Book', name: book.title, author: { '@type': 'Person', name: book.author }, image: book.cover_url || undefined };
+if (rating.n >= 3) jsonLd.aggregateRating = { '@type': 'AggregateRating', ratingValue: rating.overall, ratingCount: rating.n, bestRating: 5, worstRating: 1 };
+const scales = [
+  { name: 'overall', label: 'Overall', opts: ['', 'Meh', 'Fine', 'Good', 'Loved it', 'Obsessed'] },
+  { name: 'spice', label: 'Spice', opts: SPICE },
+  { name: 'darkness', label: 'Darkness', opts: DARK },
+];
+if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+---
+<Base title={`${book.title} by ${book.author}: spice level, tropes & reader ratings | Dark Romance Fan`} description={`${book.blurb} Reader ratings for spice and darkness, trope tags and comments.`} jsonLd={jsonLd} image={book.cover_url}>
+  <div class="wrap">
+    <div class="bookhead">
+      <Cover book={book} eager />
+      <div>
+        <div class="eyebrow">Dark romance{book.series && ` · ${book.series}`}</div>
+        <h1 style="font-size:clamp(2.2rem,4.5vw,3.6rem)">{book.title}</h1>
+        <div class="meta" style="font-size:1.02rem">by <strong style="color:var(--ink)">{book.author}</strong>{book.year && ` · first published ${book.year}`}</div>
+        <div class="scorecard">
+          <div><span class="big">{rating.n ? rating.overall : '–'}<span style="font-size:1rem;color:var(--muted)">/5</span></span><span class="lbl">Readers · {rating.n} {rating.n === 1 ? 'rating' : 'ratings'}</span></div>
+          <div><span class="big" style="color:var(--blood-2)">{rating.n ? rating.spice : '–'}</span><span class="lbl">Spice{rating.n ? ` · ${SPICE[Math.round(rating.spice)]}` : ''}</span></div>
+          <div><span class="big">{rating.n ? rating.darkness : '–'}</span><span class="lbl">Darkness{rating.n ? ` · ${DARK[Math.round(rating.darkness)]}` : ''}</span></div>
+        </div>
+        <p style="font-size:1.08rem">{book.blurb}</p>
+        <div class="buy">
+          <a class="btn" href={`/go/${book.slug}?store=amazon`} rel="sponsored nofollow">Buy on Amazon</a>
+          <a class="btn ghost" href={`/go/${book.slug}?store=bookshop`} rel="sponsored nofollow">Bookshop.org</a>
+          <a class="btn ghost" href="#rate">Rate it</a>
+        </div>
+        {book.content_note && <div class="note"><strong>Content note.</strong> {book.content_note}</div>}
+        {lists.length > 0 && <p class="meta">Featured in: {lists.map((l, i) => <>{i > 0 && ' · '}<a href={`/lists/${l.slug}`}>{l.title}</a></>)}</p>}
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap narrow">
+    <section id="tropes" style="padding-top:20px">
+      <div class="eyebrow">Tagged by readers</div>
+      <h2>Tropes</h2>
+      <p class="meta">Tap a trope to agree with it, or add one we've missed.</p>
+      <div class="tags">
+        {allTropes.map((t) => (
+          <form method="post" action="/api/trope" style="display:inline">
+            <input type="hidden" name="book_id" value={book.id} /><input type="hidden" name="trope" value={t} />
+            <button class="tag" type="submit">{t}<b>{voted.get(t) || 0}</b></button>
+          </form>
+        ))}
+      </div>
+      <form method="post" action="/api/trope" style="display:flex;gap:8px;max-width:420px;margin-top:8px">
+        <input type="hidden" name="book_id" value={book.id} />
+        <input name="trope" placeholder="e.g. touch her and die" maxlength="40" aria-label="Add a trope" />
+        <button class="btn small" type="submit">Add</button>
+      </form>
+    </section>
+
+    <div class="twocol">
+      <section id="react" style="padding-top:0">
+        <div class="panel" style="height:100%">
+          <h3>Have you read it?</h3>
+          <div class="react">
+            {[['loved', '🖤 Loved it'], ['dnf', 'Did not finish'], ['tbr', 'Want to read']].map(([k, label]) => (
+              <form method="post" action="/api/react"><input type="hidden" name="book_id" value={book.id} /><input type="hidden" name="kind" value={k} />
+                <button type="submit">{label}<b>{reacts[k] || 0}</b></button></form>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section id="rate" style="padding-top:0">
+        <div class="panel">
+          <h3>Rate this book</h3>
+          {Astro.url.searchParams.get('r') && <div class="flash">Thanks, your rating is in.</div>}
+          <form class="form" method="post" action="/api/rate">
+            <input type="hidden" name="book_id" value={book.id} />
+            {scales.map((s) => (
+              <label>{s.label}
+                <select name={s.name} required={s.name === 'overall'}><option value="">Choose…</option>{[1, 2, 3, 4, 5].map((n) => <option value={n}>{n} · {s.opts[n]}</option>)}</select>
+              </label>
+            ))}
+            <div><button class="btn" type="submit">Submit rating</button></div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  {similar.length > 0 && (
+    <section style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div class="wrap">
+        <div class="section-head"><div><div class="eyebrow">If you liked this</div><h2>Similar dark romance</h2></div></div>
+        <div class="shelf">
+          {similar.map((b) => <a class="tile" href={`/books/${b.slug}`}><Cover book={b} /><h3>{b.title}</h3><div class="by">{b.author}</div><Meters rating={simRatings[b.id]} /></a>)}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <div class="wrap narrow"><Comments bookId={book.id} prompt={`What did you think of ${book.title}?`} /></div>
+  <Signup source={`book:${book.slug}`} />
+</Base>

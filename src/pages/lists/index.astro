@@ -1,0 +1,21 @@
+---
+import Base from '../../layouts/Base.astro';
+import Cover from '../../components/Cover.astro';
+import Signup from '../../components/Signup.astro';
+import { publishedLists, listCovers } from '../../lib/data';
+const [lists, covers] = await Promise.all([publishedLists(), listCovers()]);
+---
+<Base title="Dark romance reading lists by trope | Dark Romance Fan">
+  <div class="wrap pagehead"><div class="eyebrow">Reading lists</div><h1>Dark romance by trope</h1>
+    <p class="lede">Pick your poison. Every list comes with reader ratings for spice and darkness, and content notes.</p></div>
+  <section class="wrap"><div class="lists">
+    {lists.map((l) => (
+      <a class="listcard" href={`/lists/${l.slug}`}>
+        <div class="stack">{(covers[l.id] || []).slice(0, 4).map((c) => <Cover book={c} />)}</div>
+        <h3>{l.title}</h3><p>{l.intro}</p>
+        <span class="more">{l.book_count} {l.book_count === 1 ? 'book' : 'books'} →</span>
+      </a>
+    ))}
+  </div></section>
+  <Signup source="lists" />
+</Base>

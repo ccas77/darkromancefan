@@ -1,0 +1,11 @@
+---
+const { rating } = Astro.props;
+const dots = (v: number) => [1, 2, 3, 4, 5].map((n) => n <= Math.round(v));
+---
+{rating?.n ? (
+  <div class="meters">
+    <span class="stars" title={`${rating.overall} out of 5`}>{'★'.repeat(Math.round(rating.overall))}{'☆'.repeat(5 - Math.round(rating.overall))}</span>
+    <span class="meter spice" title={`Spice ${rating.spice}/5`}><span class="lbl">Spice</span>{dots(rating.spice).map((on) => <i class={on ? 'on' : ''} />)}</span>
+    <span class="meter dark" title={`Darkness ${rating.darkness}/5`}><span class="lbl">Dark</span>{dots(rating.darkness).map((on) => <i class={on ? 'on' : ''} />)}</span>
+  </div>
+) : <div class="meters">Be the first to rate</div>}

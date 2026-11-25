@@ -1,0 +1,21 @@
+{
+  "name": "darkromancefan",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "7.4.13",
+    "@astrojs/vercel": "11.0.22",
+    "@neondatabase/serverless": "1.2.1",
+    "@electric-sql/pglite": "0.6.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

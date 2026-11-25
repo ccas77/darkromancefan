@@ -1,0 +1,6 @@
+---
+const { book, class: cls = '', eager = false } = Astro.props;
+---
+{book.cover_url
+  ? <img class={`cover ${cls}`} src={book.cover_url} alt={`Cover of ${book.title} by ${book.author ?? ''}`} loading={eager ? 'eager' : 'lazy'} width="400" height="600" />
+  : <div class={`cover ph ${cls}`}>{book.title}</div>}

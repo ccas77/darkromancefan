@@ -1,0 +1,54 @@
+---
+import { approvedComments } from '../lib/data';
+import { renderComment } from '../lib/util';
+const { bookId, listId, prompt = 'What did you think?' } = Astro.props;
+const comments = await approvedComments({ bookId, listId });
+const c = Astro.url.searchParams.get('c');
+const reported = Astro.url.searchParams.get('reported');
+const msg: Record<string, string> = {
+  live: 'Your comment is live. Thanks!',
+  held: 'Thanks! First comments are checked before they appear. After that, yours will post straight away.',
+  thanks: 'Thanks for your comment.',
+  invalid: 'Please add your name, a valid email and a comment.',
+  slow: 'Slow down a little. Try again in a minute.',
+};
+const fmt = (d: any) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+<section id="comments">
+  <div class="eyebrow">Discussion</div>
+  <h2>{comments.length ? `${comments.length} reader comment${comments.length === 1 ? '' : 's'}` : 'Reader comments'}</h2>
+  {c && msg[c] && <div class="flash">{msg[c]}</div>}
+  {reported && <div class="flash">Thanks. A moderator will take a look.</div>}
+  {comments.length === 0 && <p class="meta">No comments yet. Be the first.</p>}
+  {comments.map((cm) => (
+    <div class="comment" id={`comment-${cm.id}`}>
+      <div class="avatar">{cm.name.trim().charAt(0).toUpperCase()}</div>
+      <div>
+      <span class="who">{cm.name}</span><span class="when">{fmt(cm.created_at)}</span>
+      {cm.spoiler
+        ? <details class="spoilerbox"><summary>Contains spoilers. Tap to read.</summary><div class="body" set:html={renderComment(cm.body)} /></details>
+        : <div class="body" set:html={renderComment(cm.body)} />}
+      <form method="post" action="/api/report" style="margin-top:6px">
+        <input type="hidden" name="comment_id" value={cm.id} />
+        <button class="linkbtn" type="submit">Report</button>
+      </form>
+      </div>
+    </div>
+  ))}
+  <div class="panel" style="margin-top:28px">
+    <h3>{prompt}</h3>
+    <form class="form" method="post" action="/api/comment">
+      {bookId && <input type="hidden" name="book_id" value={bookId} />}
+      {listId && <input type="hidden" name="list_id" value={listId} />}
+      <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <div class="row">
+        <label>Name <input name="name" required maxlength="60" /></label>
+        <label>Email (never shown) <input type="email" name="email" required /></label>
+      </div>
+      <label>Comment <textarea name="body" rows="4" required maxlength="4000" placeholder="Wrap plot twists in ||double bars|| to hide them."></textarea></label>
+      <label class="check"><input type="checkbox" name="spoiler" /> My whole comment contains spoilers</label>
+      <label class="check"><input type="checkbox" name="newsletter" /> Send me The Dark Romance Drop (weekly email)</label>
+      <div><button class="btn" type="submit">Post comment</button></div>
+    </form>
+  </div>
+</section>

@@ -1,0 +1,42 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description?: string; noindex?: boolean; jsonLd?: any; image?: string | null }
+const { title, description = 'Dark romance recommendations by trope, with reader ratings for spice and darkness, plus a weekly email of the best dark romance deals.', noindex = false, jsonLd, image } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  {noindex && <meta name="robots" content="noindex" />}
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  {image && <meta property="og:image" content={image} />}
+  <meta name="theme-color" content="#141011" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://covers.openlibrary.org" />
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;0,6..96,700;1,6..96,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+</head>
+<body>
+  <div class="topbar">New every week: the best dark romance deals, free in your inbox. <a href="/#signup">Join The Dark Romance Drop →</a></div>
+  <header class="site"><div class="wrap">
+    <a class="logo" href="/">Dark Romance <em>Fan</em></a>
+    <nav><a href="/lists">Reading lists</a><a class="hide-sm" href="/#signup">Newsletter</a><a href="/promote">For authors</a></nav>
+  </div></header>
+  <main><slot /></main>
+  <footer><div class="wrap">
+    <div><a class="logo" href="/" style="display:inline">Dark Romance <em>Fan</em></a><p style="margin-top:12px;max-width:380px">Dark romance by trope, rated by readers for spice and darkness. For adult readers only (18+).</p></div>
+    <div><h4>Explore</h4><a href="/lists">Reading lists</a><a href="/#signup">The Dark Romance Drop</a></div>
+    <div><h4>Authors</h4><a href="/promote">Promote your book</a></div>
+    <div class="legal">© {new Date().getFullYear()} darkromancefan.com · We may earn a commission when you buy through links on this site. Covers via Open Library.</div>
+  </div></footer>
+</body>
+</html>

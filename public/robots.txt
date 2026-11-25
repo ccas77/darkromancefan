@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin
+Disallow: /mcp/
+Disallow: /api/
+Disallow: /go/
+Sitemap: https://darkromancefan.com/sitemap.xml

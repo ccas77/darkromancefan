@@ -1,0 +1,22 @@
+---
+import Cover from './Cover.astro';
+import Meters from './Meters.astro';
+const { book, index, rating } = Astro.props;
+---
+<article class="book">
+  <a href={`/books/${book.slug}`}><Cover book={book} /></a>
+  <div>
+    <span class="num">No. {index + 1}</span>
+    <h3><a href={`/books/${book.slug}`}>{book.title}</a></h3>
+    <div class="meta">by {book.author}{book.series && ` · ${book.series}`}{book.year && ` · ${book.year}`}</div>
+    <Meters rating={rating} />
+    <ul class="tags">{book.tropes.map((t: string) => <li class="tag">{t}</li>)}</ul>
+    <p>{book.blurb}</p>
+    {book.note && <p class="meta"><em>{book.note}</em></p>}
+    <div class="buy">
+      <a class="btn small" href={`/go/${book.slug}?store=amazon`} rel="sponsored nofollow">Amazon</a>
+      <a class="btn small ghost" href={`/go/${book.slug}?store=bookshop`} rel="sponsored nofollow">Bookshop.org</a>
+      <a class="btn small ghost" href={`/books/${book.slug}#comments`}>Ratings & comments</a>
+    </div>
+  </div>
+</article>

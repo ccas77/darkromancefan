@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import { PACKAGES, linkFor } from '../lib/packages';
+---
+<Base title="Promote your dark romance | Dark Romance Fan" description="Put your dark romance in front of readers who are looking for exactly that. Newsletter features, new release spotlights and launch bundles.">
+  <div class="wrap pagehead center" style="text-align:center">
+    <div class="eyebrow">For authors</div>
+    <h1>Put your book in front of<br />dark romance readers</h1>
+    <p class="lede" style="margin:0 auto">Every subscriber to The Dark Romance Drop signed up for one thing: more dark romance. No general fiction, no sweet romance.</p>
+  </div>
+  <section class="wrap">
+    <div class="pkgs">
+      {PACKAGES.map((p) => {
+        const link = linkFor(p.key);
+        return (
+          <div class={`pkg ${p.key === 'featured' ? 'feature' : ''}`}>
+            <h3>{p.name}</h3>
+            <div class="price">{p.price}</div>
+            <ul>{p.points.map((pt) => <li>{pt}</li>)}</ul>
+            {link ? <a class="btn" href={link}>Book this slot</a> : <span class="btn ghost" aria-disabled="true" style="justify-content:center">Booking opens soon</span>}
+          </div>
+        );
+      })}
+    </div>
+    <div class="panel narrow" style="margin:40px auto 0">
+      <h3>The rules</h3>
+      <p>Books must be dark romance (or adjacent), with heroines aged 18+, a professional cover and content warnings available to readers. We check every booking. If your book isn't a fit, you get a full refund. At checkout you'll be asked for your book title, a buy link and your preferred date.</p>
+      <p class="meta">Questions? Reply to your booking confirmation email.</p>
+    </div>
+  </section>
+</Base>

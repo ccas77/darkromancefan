@@ -1,0 +1,43 @@
+---
+import Base from '../../layouts/Base.astro';
+import BookRow from '../../components/BookRow.astro';
+import Comments from '../../components/Comments.astro';
+import Signup from '../../components/Signup.astro';
+import { listBySlug, listBooks, ratingsForBooks } from '../../lib/data';
+const list = await listBySlug(Astro.params.slug!);
+if (!list) return new Response('Not found', { status: 404 });
+const books = await listBooks(list.id);
+const ratings = await ratingsForBooks(books.map((b) => b.id));
+const s = Astro.url.searchParams.get('s');
+const jsonLd = { '@context': 'https://schema.org', '@type': 'ItemList', name: list.title,
+  itemListElement: books.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: `https://darkromancefan.com/books/${b.slug}`, name: b.title })) };
+if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+---
+<Base title={`${list.title} | Dark Romance Fan`} description={list.intro} jsonLd={jsonLd} image={books[0]?.cover_url}>
+  <div class="wrap narrow pagehead">
+    <div class="eyebrow">Reading list · {books.length} books</div>
+    <h1>{list.title}</h1>
+    <p class="lede">{list.intro}</p>
+  </div>
+  <div class="wrap narrow">
+    <div class="note">Every book here is dark romance for adult readers. Spice and darkness ratings come from readers. Check each author's content warnings before you start.</div>
+    {books.map((b, i) => <BookRow book={b} index={i} rating={ratings[b.id]} />)}
+
+    <section id="suggest">
+      <div class="panel">
+        <h3>What's missing from this list?</h3>
+        <p class="meta">Suggest a book. If it fits, we'll add it.</p>
+        {s && <div class="flash">Thanks! We'll take a look.</div>}
+        <form class="form" method="post" action="/api/suggest">
+          <input type="hidden" name="list_id" value={list.id} />
+          <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <div class="row"><label>Book title <input name="title" required maxlength="150" /></label><label>Author <input name="author" maxlength="100" /></label></div>
+          <label>Why does it belong here? (optional) <input name="note" maxlength="500" /></label>
+          <div><button class="btn" type="submit">Suggest a book</button></div>
+        </form>
+      </div>
+    </section>
+    <Comments listId={list.id} prompt="Agree with this list? Tell us." />
+  </div>
+  <Signup source={`list:${list.slug}`} />
+</Base>
