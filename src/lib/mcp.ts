@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { q, one, audit } from './db';
 import { approveComment, rejectComment, restoreComment, requestApproval, setBan, PolicyError } from './actions';
-import { beehiivConfigured, createDraftPost } from './beehiiv';
+import { newsletterConfigured, createDraft, subscribe, PROVIDER } from './newsletter';
 import { slugify } from './util';
 
 const ACTOR = 'claude';
@@ -58,7 +58,8 @@ export function buildServer() {
       (SELECT count(*)::int FROM signups) AS subscribers_via_site,
       (SELECT count(*)::int FROM comments WHERE status='approved') AS live_comments,
       (SELECT count(*)::int FROM clicks WHERE created_at > now()-interval '7 days') AS buy_clicks_7d`);
-    return { ...r, beehiiv_connected: beehiivConfigured(), rules: POLICY };
+    return { ...r, newsletter_provider: PROVIDER, newsletter_connected: newsletterConfigured(),
+      unsynced_signups: (await one(`SELECT count(*)::int AS n FROM signups WHERE NOT synced`))!.n, rules: POLICY };
   }));
 
   // ---------- Moderation ----------
@@ -271,7 +272,7 @@ export function buildServer() {
   }));
 
   s.registerTool('save_newsletter_draft', {
-    description: 'Save a newsletter issue as a DRAFT (markdown). Also creates a draft post in Beehiiv when connected and allowed by the plan. Never schedules or sends: the owner reviews and sends it. Pass issue_id to revise an existing draft.',
+    description: 'Save a newsletter issue as a DRAFT (markdown). Also creates a draft broadcast in Kit when connected. Never schedules or sends: the owner reviews and sends it. Pass issue_id to revise an existing draft.',
     inputSchema: { title: z.string().max(150), send_date: z.string().max(40), content_md: z.string().max(40000),
       booking_ids: z.array(z.number().int()).default([]), issue_id: z.number().int().optional() },
   }, wrap(async ({ title, send_date, content_md, booking_ids, issue_id }: any) => {
@@ -285,14 +286,30 @@ export function buildServer() {
       id = (await one(`INSERT INTO newsletter_issues (title,send_date,content_md) VALUES ($1,$2,$3) RETURNING id`, [title, send_date, content_md]))!.id;
     }
     for (const b of booking_ids) await q(`UPDATE promo_bookings SET status='scheduled', issue_id=$2 WHERE id=$1`, [b, id]);
-    let beehiiv = 'Beehiiv not connected: the owner can copy the draft from the admin page.';
-    if (beehiivConfigured()) {
-      const r = await createDraftPost(title, mdToHtml(content_md));
-      if (r.ok) { await q(`UPDATE newsletter_issues SET beehiiv_post_id=$2 WHERE id=$1`, [id, r.data?.data?.id || 'created']); beehiiv = 'Draft created in Beehiiv (not scheduled).'; }
-      else beehiiv = `Beehiiv didn't accept the draft (HTTP ${r.status}); this plan may not allow creating posts by API. The owner can copy it from the admin page.`;
+    let provider = 'Kit not connected: the owner can copy the draft from the admin page.';
+    if (newsletterConfigured()) {
+      const r = await createDraft(title, mdToHtml(content_md));
+      if (r.ok) { await q(`UPDATE newsletter_issues SET beehiiv_post_id=$2 WHERE id=$1`, [id, String(r.data?.broadcast?.id || 'created')]); provider = 'Draft created in Kit (not scheduled or sent).'; }
+      else provider = `Kit didn't accept the draft (HTTP ${r.status}). The owner can copy it from the admin page.`;
     }
     await audit(ACTOR, 'save_newsletter_draft', `issue:${id}`, title);
-    return { issue_id: id, status: 'draft', beehiiv, html_preview: mdToHtml(content_md).slice(0, 2000) };
+    return { issue_id: id, status: 'draft', provider, html_preview: mdToHtml(content_md).slice(0, 2000) };
+  }));
+
+  s.registerTool('sync_signups_to_newsletter', {
+    description: 'Send site sign-ups that are not yet in Kit (for example from before Kit was connected) to Kit, up to 200 per call. Safe to repeat.',
+    inputSchema: { limit: z.number().int().min(1).max(200).default(200) },
+  }, wrap(async ({ limit }: any) => {
+    if (!newsletterConfigured()) throw new PolicyError('Kit is not connected yet (KIT_API_KEY missing).');
+    const rows = await q(`SELECT email, source FROM signups WHERE NOT synced ORDER BY created_at LIMIT $1`, [limit]);
+    let ok = 0; const failed: number[] = [];
+    for (const r of rows) {
+      const res = await subscribe(r.email, r.source || 'site');
+      if (res.ok) { ok++; await q(`UPDATE signups SET synced=true WHERE email=$1`, [r.email]); } else failed.push(res.status);
+    }
+    await audit(ACTOR, 'sync_signups', 'newsletter', { synced: ok, failed: failed.length });
+    const left = (await one(`SELECT count(*)::int AS n FROM signups WHERE NOT synced`))!.n;
+    return { synced: ok, failed: failed.length, failure_statuses: [...new Set(failed)], still_unsynced: left };
   }));
 
   // ---------- Reporting ----------
@@ -304,7 +321,7 @@ export function buildServer() {
     const iv = `now() - ($1 || ' days')::interval`;
     const [clicks, signups, activity, revenue] = await Promise.all([
       q(`SELECT b.title, c.store, count(*)::int AS clicks FROM clicks c JOIN books b ON b.id=c.book_id WHERE c.created_at > ${iv} GROUP BY b.title, c.store ORDER BY clicks DESC LIMIT 20`, p),
-      q(`SELECT source, count(*)::int AS n, sum(CASE WHEN synced THEN 1 ELSE 0 END)::int AS synced_to_beehiiv FROM signups WHERE created_at > ${iv} GROUP BY source ORDER BY n DESC`, p),
+      q(`SELECT source, count(*)::int AS n, sum(CASE WHEN synced THEN 1 ELSE 0 END)::int AS synced_to_newsletter FROM signups WHERE created_at > ${iv} GROUP BY source ORDER BY n DESC`, p),
       one(`SELECT (SELECT count(*)::int FROM comments WHERE status='approved' AND created_at > ${iv}) AS comments,
                   (SELECT count(*)::int FROM ratings WHERE created_at > ${iv}) AS ratings,
                   (SELECT count(*)::int FROM trope_votes WHERE created_at > ${iv}) AS trope_votes,

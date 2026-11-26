@@ -33,8 +33,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   if (f.get('newsletter') === 'on') {
     await q(`INSERT INTO signups (email, source) VALUES ($1,'comment') ON CONFLICT DO NOTHING`, [email]);
-    const { beehiivConfigured, subscribe } = await import('../../lib/beehiiv');
-    if (beehiivConfigured()) { const r = await subscribe(email, 'comment'); if (r.ok) await q(`UPDATE signups SET synced=true WHERE email=$1`, [email]); }
+    const { newsletterConfigured, subscribe } = await import('../../lib/newsletter');
+    if (newsletterConfigured()) { const r = await subscribe(email, 'comment'); if (r.ok) await q(`UPDATE signups SET synced=true WHERE email=$1`, [email]); }
   }
   return back(status === 'approved' ? 'live' : status === 'spam' ? 'thanks' : 'held');
 };

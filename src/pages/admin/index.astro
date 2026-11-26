@@ -108,7 +108,7 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
       <h2 style="margin-top:30px">Newsletter issues</h2>
       <table>
         {d.issues.map((i: any) => (
-          <tr><td><strong>{i.title}</strong><div class="meta">for {i.send_date || 'no date'}{i.beehiiv_post_id && ' · draft in Beehiiv'}</div>
+          <tr><td><strong>{i.title}</strong><div class="meta">for {i.send_date || 'no date'}{i.beehiiv_post_id && ' · draft in Kit'}</div>
             <details><summary class="meta">Show content</summary><pre style="white-space:pre-wrap;font-size:.85rem">{i.content_md}</pre></details></td>
             <td><span class="pill">{i.status}</span></td>
             <td>{i.status !== 'sent' && <form method="post" action="/api/admin/action"><input type="hidden" name="id" value={i.id} /><button class="linkbtn" name="action" value="issue_sent">mark as sent</button></form>}</td></tr>
