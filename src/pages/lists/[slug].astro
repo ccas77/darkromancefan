@@ -10,7 +10,7 @@ const books = await listBooks(list.id);
 const ratings = await ratingsForBooks(books.map((b) => b.id));
 const s = Astro.url.searchParams.get('s');
 const jsonLd = { '@context': 'https://schema.org', '@type': 'ItemList', name: list.title,
-  itemListElement: books.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: `https://darkromancefan.com/books/${b.slug}`, name: b.title })) };
+  itemListElement: books.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: `https://www.darkromancefan.com/books/${b.slug}`, name: b.title })) };
 if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
 ---
 <Base title={`${list.title} | Dark Romance Fan`} description={list.intro} jsonLd={jsonLd} image={books[0]?.cover_url}>

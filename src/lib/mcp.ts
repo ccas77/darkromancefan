@@ -266,8 +266,8 @@ export function buildServer() {
       q(`SELECT c.body, m.name, b.title, b.slug FROM comments c JOIN commenters m ON m.id=c.commenter_id JOIN books b ON b.id=c.book_id
          WHERE c.status='approved' AND NOT c.spoiler AND c.body NOT LIKE '%||%' AND c.created_at > now() - ($1 || ' days')::interval ORDER BY c.created_at DESC LIMIT 10`, [days]),
     ]);
-    return { site: 'https://darkromancefan.com', unscheduled_bookings: bookings, updated_lists: lists, new_books: books, top_rated: top, reader_comments: comments,
-      tip: 'Link books as https://darkromancefan.com/books/<slug> so clicks are tracked on the site. Paid placements go first and are labelled "Sponsored".' };
+    return { site: 'https://www.darkromancefan.com', unscheduled_bookings: bookings, updated_lists: lists, new_books: books, top_rated: top, reader_comments: comments,
+      tip: 'Link books as https://www.darkromancefan.com/books/<slug> so clicks are tracked on the site. Paid placements go first and are labelled "Sponsored".' };
   }));
 
   s.registerTool('save_newsletter_draft', {

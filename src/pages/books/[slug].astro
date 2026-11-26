@@ -4,6 +4,7 @@ import Comments from '../../components/Comments.astro';
 import Signup from '../../components/Signup.astro';
 import Cover from '../../components/Cover.astro';
 import Meters from '../../components/Meters.astro';
+import { coverAbs } from '../../lib/covers';
 import { bookBySlug, listsForBook, ratingSummary, tropeTally, reactionTally, similarBooks, ratingsForBooks, SPICE, DARK } from '../../lib/data';
 const book = await bookBySlug(Astro.params.slug!);
 if (!book) return new Response('Not found', { status: 404 });
@@ -11,7 +12,7 @@ const [lists, rating, tropes, reacts, similar] = await Promise.all([listsForBook
 const simRatings = await ratingsForBooks(similar.map((b) => b.id));
 const voted = new Map(tropes.map((t) => [t.trope, t.n]));
 const allTropes = [...new Set([...book.tropes, ...tropes.map((t) => t.trope)])].sort((a, b) => (voted.get(b) || 0) - (voted.get(a) || 0));
-const jsonLd: any = { '@context': 'https://schema.org', '@type': 'Book', name: book.title, author: { '@type': 'Person', name: book.author }, image: book.cover_url || undefined };
+const jsonLd: any = { '@context': 'https://schema.org', '@type': 'Book', name: book.title, author: { '@type': 'Person', name: book.author }, image: coverAbs(book.cover_url, Astro.site) };
 if (rating.n >= 3) jsonLd.aggregateRating = { '@type': 'AggregateRating', ratingValue: rating.overall, ratingCount: rating.n, bestRating: 5, worstRating: 1 };
 const scales = [
   { name: 'overall', label: 'Overall', opts: ['', 'Meh', 'Fine', 'Good', 'Loved it', 'Obsessed'] },

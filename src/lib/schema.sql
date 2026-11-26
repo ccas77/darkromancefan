@@ -178,3 +178,9 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
   revoked BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS cover_cache (
+  key TEXT PRIMARY KEY,
+  content_type TEXT NOT NULL,
+  data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

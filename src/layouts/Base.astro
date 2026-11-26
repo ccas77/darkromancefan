@@ -1,8 +1,10 @@
 ---
 import '../styles/global.css';
+import { coverAbs } from '../lib/covers';
 interface Props { title: string; description?: string; noindex?: boolean; jsonLd?: any; image?: string | null }
 const { title, description = 'Dark romance recommendations by trope, with reader ratings for spice and darkness, plus a weekly email of the best dark romance deals.', noindex = false, jsonLd, image } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = coverAbs(image, Astro.site);
 ---
 <!doctype html>
 <html lang="en">
@@ -16,12 +18,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content="website" />
-  {image && <meta property="og:image" content={image} />}
+  {ogImage && <meta property="og:image" content={ogImage} />}
   <meta name="theme-color" content="#141011" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://covers.openlibrary.org" />
   <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,600;0,6..96,700;1,6..96,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
   {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
 </head>

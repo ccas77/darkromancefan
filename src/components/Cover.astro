@@ -1,6 +1,8 @@
 ---
+import { coverSrc } from '../lib/covers';
 const { book, class: cls = '', eager = false } = Astro.props;
+const src = coverSrc(book.cover_url);
 ---
-{book.cover_url
-  ? <img class={`cover ${cls}`} src={book.cover_url} alt={`Cover of ${book.title} by ${book.author ?? ''}`} loading={eager ? 'eager' : 'lazy'} width="400" height="600" />
+{src
+  ? <img class={`cover ${cls}`} src={src} alt={`Cover of ${book.title} by ${book.author ?? ''}`} loading={eager ? 'eager' : 'lazy'} width="400" height="600" />
   : <div class={`cover ph ${cls}`}>{book.title}</div>}
