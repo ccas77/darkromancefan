@@ -1,10 +1,12 @@
 ---
 import '../styles/global.css';
 import { coverAbs } from '../lib/covers';
+import { LEGAL, LEGAL_PAGES } from '../lib/legal';
 interface Props { title: string; description?: string; noindex?: boolean; jsonLd?: any; image?: string | null }
 const { title, description = 'Dark romance recommendations by trope, with reader ratings for spice and darkness, plus a weekly email of the best dark romance deals.', noindex = false, jsonLd, image } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const ogImage = coverAbs(image, Astro.site);
+const ogImage = coverAbs(image, Astro.site) ?? new URL('/og.png', Astro.site).toString();
+const isDefaultImage = !image;
 ---
 <!doctype html>
 <html lang="en">
@@ -18,7 +20,15 @@ const ogImage = coverAbs(image, Astro.site);
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:type" content="website" />
-  {ogImage && <meta property="og:image" content={ogImage} />}
+  <meta property="og:url" content={canonical} />
+  <meta property="og:site_name" content="Dark Romance Fan" />
+  <meta property="og:image" content={ogImage} />
+  {isDefaultImage && <><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" /></>}
+  <meta property="og:image:alt" content={isDefaultImage ? 'Dark Romance Fan: books by trope, rated by readers' : title} />
+  <meta name="twitter:card" content={isDefaultImage ? 'summary_large_image' : 'summary'} />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
   <meta name="theme-color" content="#141011" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -37,6 +47,7 @@ const ogImage = coverAbs(image, Astro.site);
     <div><a class="logo" href="/" style="display:inline">Dark Romance <em>Fan</em></a><p style="margin-top:12px;max-width:380px">Dark romance by trope, rated by readers for spice and darkness. For adult readers only (18+).</p></div>
     <div><h4>Explore</h4><a href="/lists">Reading lists</a><a href="/#signup">The Dark Romance Drop</a></div>
     <div><h4>Authors</h4><a href="/promote">Promote your book</a></div>
+    {LEGAL.APPROVED && <div><h4>About</h4>{LEGAL_PAGES.map((l) => <a href={l.path}>{l.label}</a>)}</div>}
     <div class="legal">© {new Date().getFullYear()} darkromancefan.com · We may earn a commission when you buy through links on this site. Covers via Open Library.</div>
   </div></footer>
 </body>

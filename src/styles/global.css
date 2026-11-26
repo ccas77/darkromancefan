@@ -214,3 +214,10 @@ th { color: var(--muted); font-weight: 600; }
   .hero-stats { gap: 22px; } .lists { grid-template-columns: 1fr; }
   section { padding: 40px 0; }
 }
+
+/* Legal pages */
+.legal-copy h2 { font-size: 1.6rem; margin-top: 1.6em; }
+.legal-copy h3 { font-size: 1.1rem; font-family: var(--sans); font-weight: 700; margin-top: 1.2em; }
+.legal-copy ul { padding-left: 1.2em; margin: 0 0 1em; }
+.legal-copy li { margin-bottom: .45em; }
+.legal-copy code { background: var(--paper-2); padding: 1px 5px; border-radius: 3px; font-size: .9em; }

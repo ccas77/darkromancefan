@@ -1,0 +1,14 @@
+---
+import Base from '../layouts/Base.astro';
+import { LEGAL } from '../lib/legal';
+const { title, description, eyebrow = 'The small print' } = Astro.props;
+---
+<Base title={`${title} | Dark Romance Fan`} description={description} noindex={!LEGAL.APPROVED}>
+  <div class="pagehead"><div class="wrap narrow">
+    <div class="eyebrow">{eyebrow}</div>
+    <h1>{title}</h1>
+    <p class="meta">Last updated {LEGAL.updated}</p>
+    {!LEGAL.APPROVED && <div class="flash" role="note">Draft for the site owner to review. This page is not linked from the site or listed in search yet.</div>}
+  </div></div>
+  <section class="wrap narrow legal-copy" style="padding-top:32px"><slot /></section>
+</Base>
