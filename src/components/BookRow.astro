@@ -1,6 +1,7 @@
 ---
 import Cover from './Cover.astro';
 import Meters from './Meters.astro';
+import { tropeHref } from '../lib/tropes';
 const { book, index, rating } = Astro.props;
 ---
 <article class="book">
@@ -10,7 +11,7 @@ const { book, index, rating } = Astro.props;
     <h3><a href={`/books/${book.slug}`}>{book.title}</a></h3>
     <div class="meta">by {book.author}{book.series && ` · ${book.series}`}{book.year && ` · ${book.year}`}</div>
     <Meters rating={rating} />
-    <ul class="tags">{book.tropes.map((t: string) => <li class="tag">{t}</li>)}</ul>
+    <ul class="tags">{book.tropes.map((t: string) => <li><a class="tag" href={tropeHref(t)}>{t}</a></li>)}</ul>
     <p>{book.blurb}</p>
     {book.note && <p class="meta"><em>{book.note}</em></p>}
     <div class="buy">

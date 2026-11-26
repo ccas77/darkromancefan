@@ -84,3 +84,20 @@ export const siteCounts = async () => (await one(`SELECT (SELECT count(*)::int F
 
 export const SPICE = ['', 'Closed door', 'Mild', 'Steamy', 'Explicit', 'Explicit and plentiful'];
 export const DARK = ['', 'Dark-ish', 'Morally grey', 'Dark', 'Very dark', 'Pitch black'];
+
+// Trope pages and search. Only the site's own trope tags (books.tropes) get pages; reader-added votes don't.
+export const allTropes = () =>
+  q<{ trope: string; n: number }>(`SELECT t AS trope, count(*)::int AS n FROM books b, unnest(b.tropes) t
+     WHERE b.status='published' AND b.deleted_at IS NULL GROUP BY t ORDER BY n DESC, t`);
+
+export const booksWithTrope = (trope: string) =>
+  q<Book>(`SELECT * FROM books WHERE $1 = ANY(tropes) AND status='published' AND deleted_at IS NULL
+     ORDER BY featured DESC, created_at DESC`, [trope]);
+
+export const searchBooks = (term: string) => {
+  const like = '%' + term.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+  return q<Book>(`SELECT * FROM books b WHERE b.status='published' AND b.deleted_at IS NULL AND (
+       b.title ILIKE $1 OR b.author ILIKE $1 OR coalesce(b.series,'') ILIKE $1
+       OR EXISTS (SELECT 1 FROM unnest(b.tropes) t WHERE t ILIKE $1))
+     ORDER BY (b.title ILIKE $1) DESC, (b.author ILIKE $1) DESC, b.featured DESC, b.created_at DESC LIMIT 40`, [like]);
+};

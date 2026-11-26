@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import BookRow from '../components/BookRow.astro';
+import { searchBooks, ratingsForBooks, allTropes } from '../lib/data';
+import { tropeHref } from '../lib/tropes';
+const term = (Astro.url.searchParams.get('q') || '').trim().slice(0, 80);
+const books = term.length >= 2 ? await searchBooks(term) : [];
+const ratings = await ratingsForBooks(books.map((b) => b.id));
+const lower = term.toLowerCase();
+const tropes = term.length >= 2 ? (await allTropes()).filter((t) => t.trope.includes(lower)).slice(0, 8) : [];
+---
+<Base title={term ? `Search: ${term} | Dark Romance Fan` : 'Search dark romance books | Dark Romance Fan'} noindex>
+  <div class="wrap pagehead"><div class="eyebrow">Search</div><h1>Find a book</h1>
+    <form method="get" action="/search" class="searchform" role="search">
+      <input type="search" name="q" value={term} placeholder="Title, author, series or trope" aria-label="Search books" minlength="2" maxlength="80" autofocus />
+      <button class="btn" type="submit">Search</button>
+    </form>
+  </div>
+  <section class="wrap narrow">
+    {tropes.length > 0 && <p class="meta">Tropes: {tropes.map((t, i) => <>{i > 0 && ' · '}<a href={tropeHref(t.trope)}>{t.trope}</a></>)}</p>}
+    {term.length >= 2 && books.length === 0 && <p>No books match “{term}” yet. <a href="/tropes">Browse by trope</a>, or suggest it on any reading list.</p>}
+    {term.length >= 2 && books.length > 0 && <p class="meta">{books.length} {books.length === 1 ? 'book' : 'books'} for “{term}”</p>}
+    {books.map((b, i) => <BookRow book={b} index={i} rating={ratings[b.id]} />)}
+    {term.length < 2 && <p>Search by title, author, series or trope, or <a href="/tropes">browse every trope</a>.</p>}
+  </section>
+</Base>

@@ -5,6 +5,7 @@ import Cover from '../components/Cover.astro';
 import Meters from '../components/Meters.astro';
 import { publishedLists, featuredBooks, recentActivity, allPublishedBooks, ratingsForBooks, listCovers, topTropes, siteCounts } from '../lib/data';
 import { esc } from '../lib/util';
+import { tropeHref } from '../lib/tropes';
 const [lists, featured, activity, books, covers, tropes, counts] = await Promise.all([publishedLists(), featuredBooks(), recentActivity(), allPublishedBooks(), listCovers(), topTropes(), siteCounts()]);
 const ratings = await ratingsForBooks(books.map((b) => b.id));
 const fan = featured.length >= 3 ? featured.slice(0, 3) : books.slice(0, 3);
@@ -60,7 +61,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-re
       </div>
       {tropes.length > 0 && (
         <div style="margin-top:34px"><div class="eyebrow">Popular tropes</div>
-          <div class="tags">{tropes.map((t) => <span class="tag">{t.trope}<b>{t.n}</b></span>)}</div></div>
+          <div class="tags">{tropes.map((t) => <a class="tag" href={tropeHref(t.trope)}>{t.trope}<b>{t.n}</b></a>)}</div></div>
       )}
     </div>
   </section>

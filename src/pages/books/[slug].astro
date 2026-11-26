@@ -5,6 +5,7 @@ import Signup from '../../components/Signup.astro';
 import Cover from '../../components/Cover.astro';
 import Meters from '../../components/Meters.astro';
 import { coverAbs } from '../../lib/covers';
+import { tropeHref } from '../../lib/tropes';
 import { bookBySlug, listsForBook, ratingSummary, tropeTally, reactionTally, similarBooks, ratingsForBooks, SPICE, DARK } from '../../lib/data';
 const book = await bookBySlug(Astro.params.slug!);
 if (!book) return new Response('Not found', { status: 404 });
@@ -64,6 +65,7 @@ if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-ma
         <input name="trope" placeholder="e.g. touch her and die" maxlength="40" aria-label="Add a trope" />
         <button class="btn small" type="submit">Add</button>
       </form>
+      {book.tropes.length > 0 && <p class="meta" style="margin-top:14px">More books like this: {book.tropes.map((t, i) => <>{i > 0 && ' · '}<a href={tropeHref(t)}>{t}</a></>)}</p>}
     </section>
 
     <div class="twocol">

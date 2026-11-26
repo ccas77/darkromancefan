@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+import Signup from '../../components/Signup.astro';
+import { allTropes } from '../../lib/data';
+import { tropeHref } from '../../lib/tropes';
+const tropes = await allTropes();
+---
+<Base title="Dark romance tropes: browse books by trope | Dark Romance Fan" description="Every dark romance trope on the site, from stalker and captive to mafia, bully and why choose, with the books tagged with each.">
+  <div class="wrap pagehead"><div class="eyebrow">Browse</div><h1>Dark romance by trope</h1>
+    <p class="lede">Pick a trope to see every book we've tagged with it, with reader ratings for spice and darkness.</p></div>
+  <section class="wrap">
+    <ul class="tags trope-index">
+      {tropes.map((t) => <li><a class="tag" href={tropeHref(t.trope)}>{t.trope}<b>{t.n}</b></a></li>)}
+    </ul>
+    <p class="meta">Looking for something specific? <a href="/search">Search by title or author</a>.</p>
+  </section>
+  <Signup source="tropes" />
+</Base>

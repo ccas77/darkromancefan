@@ -1,0 +1,31 @@
+---
+import Base from '../../layouts/Base.astro';
+import BookRow from '../../components/BookRow.astro';
+import Signup from '../../components/Signup.astro';
+import { allTropes, booksWithTrope, ratingsForBooks } from '../../lib/data';
+import { slugify } from '../../lib/util';
+import { tropeHref, tropeTitle } from '../../lib/tropes';
+const tropes = await allTropes();
+const match = tropes.find((t) => slugify(t.trope) === Astro.params.slug);
+if (!match) return new Response('Not found', { status: 404 });
+const books = await booksWithTrope(match.trope);
+const ratings = await ratingsForBooks(books.map((b) => b.id));
+const name = tropeTitle(match.trope);
+const related = tropes.filter((t) => t.trope !== match.trope).slice(0, 12);
+const jsonLd = { '@context': 'https://schema.org', '@type': 'ItemList', name: `${name} dark romance books`,
+  itemListElement: books.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: new URL(`/books/${b.slug}`, Astro.site).toString(), name: b.title })) };
+---
+<Base title={`${name} dark romance books | Dark Romance Fan`} description={`${books.length} dark romance ${books.length === 1 ? 'book' : 'books'} tagged ${match.trope}, with reader ratings for spice and darkness and content notes.`} jsonLd={jsonLd}>
+  <div class="wrap pagehead"><div class="eyebrow"><a href="/tropes">Tropes</a></div><h1>{name}</h1>
+    <p class="lede">{books.length} {books.length === 1 ? 'book' : 'books'} tagged <strong>{match.trope}</strong>, rated by readers for spice and darkness. Check the content notes before you start.</p></div>
+  <section class="wrap narrow">
+    {books.map((b, i) => <BookRow book={b} index={i} rating={ratings[b.id]} />)}
+  </section>
+  {related.length > 0 && (
+    <section class="wrap narrow" style="padding-top:0">
+      <div class="eyebrow">More tropes</div>
+      <ul class="tags">{related.map((t) => <li><a class="tag" href={tropeHref(t.trope)}>{t.trope}<b>{t.n}</b></a></li>)}</ul>
+    </section>
+  )}
+  <Signup source={`trope-${Astro.params.slug}`} />
+</Base>
