@@ -37,7 +37,7 @@ const isDefaultImage = !image;
   {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
 </head>
 <body>
-  <div class="topbar">New every week: the best dark romance deals, free in your inbox. <a href="/#signup">Join The Dark Romance Drop →</a></div>
+  <div class="topbar">New every week: the best dark romance deals, free in your inbox. <a href="/#signup">Get your weekly obsession →</a></div>
   <header class="site"><div class="wrap">
     <a class="logo" href="/">Dark Romance <em>Fan</em></a>
     <nav><a href="/lists">Reading lists</a><a href="/tropes">Tropes</a><a href="/search">Search</a><a class="hide-sm" href="/#signup">Newsletter</a><a href="/promote">For authors</a></nav>
@@ -45,7 +45,7 @@ const isDefaultImage = !image;
   <main><slot /></main>
   <footer><div class="wrap">
     <div><a class="logo" href="/" style="display:inline">Dark Romance <em>Fan</em></a><p style="margin-top:12px;max-width:380px">Dark romance by trope, rated by readers for spice and darkness. For adult readers only (18+).</p></div>
-    <div><h4>Explore</h4><a href="/lists">Reading lists</a><a href="/tropes">Browse by trope</a><a href="/search">Search</a><a href="/#signup">The Dark Romance Drop</a></div>
+    <div><h4>Explore</h4><a href="/lists">Reading lists</a><a href="/tropes">Browse by trope</a><a href="/search">Search</a><a href="/#signup">The newsletter</a></div>
     <div><h4>Authors</h4><a href="/promote">Promote your book</a></div>
     {LEGAL.APPROVED && <div><h4>About</h4>{LEGAL_PAGES.map((l) => <a href={l.path}>{l.label}</a>)}</div>}
     <div class="legal">© {new Date().getFullYear()} darkromancefan.com · We may earn a commission when you buy through links on this site. Covers via Open Library.</div>
