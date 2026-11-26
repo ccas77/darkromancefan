@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { isOwner } from '../../../lib/auth';
 import { q, audit } from '../../../lib/db';
-import { approveComment, rejectComment, restoreComment, decideApproval, setBan, PolicyError } from '../../../lib/actions';
+import { approveComment, rejectComment, restoreComment, decideApproval, approveAllContent, setBan, PolicyError } from '../../../lib/actions';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isOwner(cookies)) return new Response('Unauthorised', { status: 401 });
@@ -11,6 +11,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     switch (action) {
       case 'approval_yes': await decideApproval(id, true); break;
       case 'approval_no': await decideApproval(id, false); break;
+      case 'approval_all': await approveAllContent(f.getAll('ids').map(Number).filter(Boolean)); break;
       case 'comment_approve': await approveComment(id, 'owner'); break;
       case 'comment_reject': await rejectComment(id, 'owner'); break;
       case 'comment_spam': await rejectComment(id, 'owner', 'spam'); break;

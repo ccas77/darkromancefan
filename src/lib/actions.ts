@@ -59,6 +59,15 @@ export async function decideApproval(id: number, approve: boolean) {
   await q(`UPDATE approvals SET status=$2, decided_at=now() WHERE id=$1`, [id, approve ? 'approved' : 'declined']);
 }
 
+/** Owner only: approve every pending book and list the owner saw on the page (books first, so lists show them). Comments are skipped. */
+export async function approveAllContent(ids: number[]) {
+  if (!ids.length) return;
+  const rows = await q(`SELECT id FROM approvals WHERE id = ANY($1::int[]) AND status='pending' AND kind IN ('book','list')
+     ORDER BY CASE kind WHEN 'book' THEN 0 ELSE 1 END, created_at`, [ids]);
+  for (const r of rows) await decideApproval(r.id, true);
+  await audit('owner', 'approve_all', '', { count: rows.length });
+}
+
 export async function setBan(commenterId: number, banned: boolean, actor: string) {
   await q(`UPDATE commenters SET banned=$2 WHERE id=$1`, [commenterId, banned]);
   if (banned) await q(`UPDATE comments SET status='rejected', decided_at=now(), decided_by=$2 WHERE commenter_id=$1 AND status IN ('pending','flagged')`, [commenterId, actor]);

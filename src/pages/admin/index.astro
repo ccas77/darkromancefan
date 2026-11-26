@@ -42,6 +42,17 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
 
       <h2 id="approvals" style="margin-top:30px">Waiting for you ({d.approvals.length})</h2>
       <p class="meta">Things Claude has prepared but isn't allowed to do on its own: borderline comments, new lists and new books.</p>
+      {(() => {
+        const bulk = d.approvals.filter((a: any) => a.kind === 'book' || a.kind === 'list');
+        return bulk.length > 1 && (
+          <form method="post" action="/api/admin/action" style="margin:10px 0 14px" onsubmit={`return confirm('Publish all ${bulk.length} books and lists below?')`}>
+            <input type="hidden" name="action" value="approval_all" /><input type="hidden" name="anchor" value="approvals" />
+            {bulk.map((a: any) => <input type="hidden" name="ids" value={a.id} />)}
+            <button class="btn small">Approve all {bulk.length} books and lists</button>
+            <span class="meta" style="margin-left:8px">Comments still need approving one by one.</span>
+          </form>
+        );
+      })()}
       <table>
         {d.approvals.map((a: any) => (
           <tr><td><span class="pill warn">{a.kind}</span></td><td>{a.summary}<div class="meta">requested by {a.requested_by}, {fmt(a.created_at)}</div></td>
