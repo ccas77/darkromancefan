@@ -4,10 +4,10 @@
  * and not linked from the footer. The owner approves the wording, then this flips to true.
  */
 export const LEGAL = {
-  APPROVED: false,
-  updated: '26 November 2026',
+  APPROVED: true,
+  updated: '27 November 2026',
   // Owner to supply: the email readers and authors should use for privacy requests.
-  contactEmail: '',
+  contactEmail: 'hello@darkromancefan.com',
 };
 
 export const LEGAL_PAGES = [
