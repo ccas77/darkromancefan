@@ -12,8 +12,9 @@ export async function importRecs(run: Run) {
     const [b] = await run(`SELECT id, recs_version FROM books WHERE slug=$1 AND deleted_at IS NULL`, [slug]);
     if (!b) continue;
     if (b.recs_version >= version) continue;
-    const [{ n }] = await run(`SELECT count(*)::int AS n FROM book_recs WHERE book_id=$1`, [b.id]);
-    if (version === 1 && n > 0) { await run(`UPDATE books SET recs_version=1 WHERE id=$1`, [b.id]); continue; }
+    // Claim the import first, so two server instances starting at once can't both run it.
+    const [claimed] = await run(`UPDATE books SET recs_version=$2 WHERE id=$1 AND recs_version < $2 RETURNING id`, [b.id, version]);
+    if (!claimed) continue;
     await run(`DELETE FROM book_recs WHERE book_id=$1`, [b.id]);
     let pos = 0;
     for (const sec of data.sections) for (const r of sec.recs) {
@@ -22,7 +23,7 @@ export async function importRecs(run: Run) {
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [b.id, sec.heading, sec.note ?? '', pos++, r.title, r.author, r.reason, lb?.id ?? null, r.asin ?? null, r.isbn ?? null, r.cover_url ?? null]);
     }
-    await run(`UPDATE books SET recs_version=$2${data.intro ? ', recs_intro=$3' : ''} WHERE id=$1`, data.intro ? [b.id, version, data.intro] : [b.id, version]);
+    if (data.intro) await run(`UPDATE books SET recs_intro=$2 WHERE id=$1`, [b.id, data.intro]);
     await run(`INSERT INTO audit_log (actor, action, target, details) VALUES ('claude','import_book_recs',$1,$2)`, [`book:${b.id}`, `${pos} recommendations`]);
   }
 }
