@@ -9,7 +9,8 @@
      "title": "Pretty Monster",
      "author": "Sheridan Anne",
      "asin": "B0C6JR1P2W",
-     "reason": "Kyah, a Brooklyn tattoo artist, has a man slipping in through her window at night, and she starts to want him to. A cat-and-mouse stalker romance with plenty of bite."
+     "reason": "Kyah, a Brooklyn tattoo artist, has a man slipping in through her window at night, and she starts to want him to. A cat-and-mouse stalker romance with plenty of bite.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/pretty-monster.jpg"
     },
     {
      "title": "I Will Break You",
@@ -23,13 +24,15 @@
      "reason": "The second half of the Pen Pal duet, straight after I Will Break You. Unreliable narrators, and it gets even more twisted.",
      "isbn": "1965738087",
      "asin": "1965738087",
-     "cover_url": "https://covers.openlibrary.org/b/id/15231075-L.jpg"
+     "cover_url": "https://www.darkromancefan.com/covers/books/i-will-mend-you.jpg",
+     "linked_slug": "i-will-mend-you"
     },
     {
      "title": "Stalking Ginevra",
      "author": "Gigi Styx",
      "reason": "A masked man kills Ginevra's fiancé, and she offers him anything to stay alive. A long, dark stalker romance from Gigi Styx's Morally Black series.",
-     "cover_url": "https://covers.openlibrary.org/b/id/15139541-L.jpg"
+     "cover_url": "https://www.darkromancefan.com/covers/books/stalking-ginevra.jpg",
+     "linked_slug": "stalking-ginevra"
     },
     {
      "title": "Twist Me",
@@ -53,12 +56,14 @@
     {
      "title": "Does It Hurt?",
      "author": "H.D. Carlton",
-     "reason": "The same author, a different set-up: Sawyer has been on the run for years when she meets Enzo. Read it for more of Carlton's voice and her morally grey men."
+     "reason": "The same author, a different set-up: Sawyer has been on the run for years when she meets Enzo. Read it for more of Carlton's voice and her morally grey men.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/does-it-hurt.jpg"
     },
     {
      "title": "The Pucking Wrong Number",
      "author": "C.R. Jane",
-     "reason": "A wrong-number text puts her in the sights of a hockey player who won't let go. Stalker romance with a sports setting and a funnier tone."
+     "reason": "A wrong-number text puts her in the sights of a hockey player who won't let go. Stalker romance with a sports setting and a funnier tone.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/the-pucking-wrong-number.jpg"
     }
    ]
   },
@@ -148,12 +153,14 @@
     {
      "title": "Always Watching",
      "author": "Lee McCormick & RS McKenzie",
-     "reason": "A serial killer decides a camboy belongs to him and sets out to protect him by any means. Dark MM stalker romance, first in a series."
+     "reason": "A serial killer decides a camboy belongs to him and sets out to protect him by any means. Dark MM stalker romance, first in a series.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/always-watching.jpg"
     },
     {
      "title": "Stalked",
      "author": "Ryan Mundy",
-     "reason": "He was only meant to get information out of him, but he can't stop coming back every night. A standalone MM stalker romance with a mafia edge."
+     "reason": "He was only meant to get information out of him, but he can't stop coming back every night. A standalone MM stalker romance with a mafia edge.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/stalked.jpg"
     }
    ]
   },
@@ -163,12 +170,14 @@
     {
      "title": "Let The Mask Fall",
      "author": "G.E. Masters",
-     "reason": "A sapphic dark romance with a masked stalker, mob ties and a possessive heroine. Readers single out its ending."
+     "reason": "A sapphic dark romance with a masked stalker, mob ties and a possessive heroine. Readers single out its ending.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/let-the-mask-fall.jpg"
     },
     {
      "title": "Burning Heaven",
      "author": "Haydn Hubbard",
-     "reason": "Addie has a stalker, and not the romantic kind. Sapphic mafia romance with a serial killer plot running through it."
+     "reason": "Addie has a stalker, and not the romantic kind. Sapphic mafia romance with a serial killer plot running through it.",
+     "cover_url": "https://www.darkromancefan.com/covers/books/burning-heaven.jpg"
     }
    ]
   },
@@ -193,5 +202,5 @@
    ]
   }
  ],
- "version": 3
+ "version": 4
 }
