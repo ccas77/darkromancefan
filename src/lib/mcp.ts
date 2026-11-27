@@ -1,6 +1,6 @@
 // The Claude admin connector. Every tool goes through the same rules as the admin page.
-// Balanced mode: Claude may approve clean comments, remove obvious spam and make small edits.
-// Borderline comments, new lists and new books go to the owner's approval queue. Nothing is ever sent to subscribers.
+// Hands-off mode: Claude publishes books and lists and moderates comments itself; the owner can undo from /admin.
+// Nothing is ever sent to subscribers, and money stays with the owner.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { q, one, audit } from './db';
@@ -19,12 +19,11 @@ function wrap<A>(fn: (a: A) => Promise<any>) {
   };
 }
 
-export const POLICY = `Balanced rules for Claude on darkromancefan.com:
-- Approve comments that are clean (no flags, no open reports) and on topic.
-- Mark obvious spam as spam. Reject clearly abusive or off-topic comments.
-- Anything borderline (flagged, reported, harsh but maybe legitimate, possible personal info, unmarked big spoilers) goes to the owner with escalate_comment.
-- Small edits to existing books and lists (typos, blurbs, tropes, ISBN/ASIN, notes, adding published books to lists) are fine.
-- New books and new lists are created as drafts and wait for the owner's approval before they go live.
+export const POLICY = `Hands-off rules for Claude on darkromancefan.com (chosen by the owner on 27 Nov 2026):
+- Claude runs content and moderation without asking. The owner gets a daily summary and can unpublish or remove anything from the admin page.
+- Comments: approve anything on topic, including flagged or reported comments once you have judged them fine. Reject abusive or off-topic comments, mark spam, ban spammers and abusive repeat offenders. This is a dark romance site for adults: dark themes, spice and strong opinions are fine.
+- Only escalate_comment for a real legal risk: someone's personal details, a threat against a real person, or a defamatory claim about a real person.
+- Books, lists and "Books like X" sections go live straight away. Facts and covers must be checked first (see the tool descriptions).
 - Newsletter issues are drafts only. The owner reviews and sends them. Never tell readers or authors something was sent.
 - Refunds and payments are the owner's. If a promo booking isn't a fit, set it to needs_owner with a note.
 - Every action is logged.`;
@@ -84,7 +83,7 @@ export function buildServer() {
   }, wrap(async ({ comment_id, as_spam, reason }: any) => { await rejectComment(comment_id, ACTOR, as_spam ? 'spam' : 'rejected', reason); return `Comment ${comment_id} ${as_spam ? 'marked as spam' : 'rejected'}.`; }));
 
   s.registerTool('escalate_comment', {
-    description: "Send a borderline comment to the owner's approval queue with a one-line explanation.",
+    description: "Only for a real legal risk (personal details, a threat or a defamatory claim about a real person): hide the comment and send it to the owner with a one-line explanation. Everything else you decide yourself.",
     inputSchema: { comment_id: z.number().int(), reason: z.string().min(3).max(300) },
   }, wrap(async ({ comment_id, reason }: any) => {
     const c = await one(`SELECT c.body, m.name FROM comments c JOIN commenters m ON m.id=c.commenter_id WHERE c.id=$1`, [comment_id]);
@@ -99,11 +98,9 @@ export function buildServer() {
   }, wrap(async ({ comment_id }: any) => { await restoreComment(comment_id, ACTOR); return `Comment ${comment_id} is back in the queue.`; }));
 
   s.registerTool('ban_commenter', {
-    description: 'Ban a commenter who has posted spam. Refused if they have no spam on record: escalate their comment instead.',
+    description: 'Ban a spammer or an abusive repeat offender. Their pending comments are removed. Give a short reason.',
     inputSchema: { commenter_id: z.number().int(), reason: z.string().max(300) },
   }, wrap(async ({ commenter_id, reason }: any) => {
-    const r = await one(`SELECT count(*)::int AS n FROM comments WHERE commenter_id=$1 AND status='spam'`, [commenter_id]);
-    if (!r!.n) throw new PolicyError('This commenter has no comments marked as spam, so banning them is the owner\'s call. Escalate their comment instead.');
     await setBan(commenter_id, true, ACTOR); await audit(ACTOR, 'ban_reason', `commenter:${commenter_id}`, reason);
     return `Commenter ${commenter_id} banned.`;
   }));
@@ -139,16 +136,16 @@ export function buildServer() {
   };
 
   s.registerTool('create_book', {
-    description: "Add a new book as a draft and send it to the owner's approval queue. Write the blurb in your own words (never copy publisher copy). Only include facts you have checked. For cover_url use Open Library: https://covers.openlibrary.org/b/id/<cover_i>-L.jpg from openlibrary.org/search.json. COVERS: never trust Open Library's first result (it often picks a foreign or omnibus edition). Download the image and look at it before using it: it must be the English edition of this exact book (right title, author, series number). Prefer the edition matching the ISBN via openlibrary.org/works/<id>/editions.json; if none is right, save the correct cover (e.g. from the Goodreads book page) as public/covers/books/<slug>.jpg in the repo (max 600px wide) and use https://www.darkromancefan.com/covers/books/<slug>.jpg.",
+    description: "Add a new book. It goes live straight away, so check every fact and the cover first. Write the blurb in your own words (never copy publisher copy). Only include facts you have checked. For cover_url use Open Library: https://covers.openlibrary.org/b/id/<cover_i>-L.jpg from openlibrary.org/search.json. COVERS: never trust Open Library's first result (it often picks a foreign or omnibus edition). Download the image and look at it before using it: it must be the English edition of this exact book (right title, author, series number). Prefer the edition matching the ISBN via openlibrary.org/works/<id>/editions.json; if none is right, save the correct cover (e.g. from the Goodreads book page) as public/covers/books/<slug>.jpg in the repo (max 600px wide) and use https://www.darkromancefan.com/covers/books/<slug>.jpg.",
     inputSchema: bookFields,
   }, wrap(async (a: any) => {
     let slug = slugify(a.title); if (await one(`SELECT 1 FROM books WHERE slug=$1`, [slug])) slug = slugify(`${a.title} ${a.author}`);
     const note = a.content_note ?? '';
     const b = await one(`INSERT INTO books (slug,title,author,series,blurb,tropes,content_note,isbn,asin,cover_url,year) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, slug`,
       [slug, a.title, a.author, a.series ?? null, a.blurb, a.tropes.map((t: string) => t.toLowerCase()), note, a.isbn ?? null, a.asin ?? null, a.cover_url ?? null, a.year ?? null]);
-    await audit(ACTOR, 'create_book_draft', `book:${b!.id}`, a.title);
-    const ap = await requestApproval('book', b!.id, `New book: ${a.title} by ${a.author}`, ACTOR);
-    return `Draft book "${a.title}" created (slug ${b!.slug}). Waiting for owner approval #${ap}.`;
+    await q(`UPDATE books SET status='published', updated_at=now() WHERE id=$1`, [b!.id]);
+    await audit(ACTOR, 'publish_book', `book:${b!.id}`, `${a.title} by ${a.author}`);
+    return `Book "${a.title}" is live at /books/${b!.slug}.`;
   }));
 
   s.registerTool('update_book', {
@@ -223,7 +220,7 @@ export function buildServer() {
       FROM lists l WHERE l.deleted_at IS NULL ORDER BY l.created_at`)));
 
   s.registerTool('create_list', {
-    description: "Create a new reading list as a draft and send it to the owner's approval queue. Books must already exist (create_book first).",
+    description: "Create a new reading list. It goes live straight away. Books must already exist (create_book first).",
     inputSchema: { title: z.string().min(5).max(150), intro: z.string().max(800), book_slugs: z.array(z.string()).min(1).max(40) },
   }, wrap(async ({ title, intro, book_slugs }: any) => {
     const slug = slugify(title);
@@ -234,9 +231,9 @@ export function buildServer() {
       const b = await one(`SELECT id FROM books WHERE slug=$1 AND deleted_at IS NULL`, [bs]);
       if (b) await q(`INSERT INTO list_items (list_id,book_id,position) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [l!.id, b.id, pos++]); else missing.push(bs);
     }
-    await audit(ACTOR, 'create_list_draft', `list:${l!.id}`, title);
-    const ap = await requestApproval('list', l!.id, `New list: ${title} (${pos} books)`, ACTOR);
-    return { message: `Draft list created, waiting for owner approval #${ap}.`, slug, missing_books: missing };
+    await q(`UPDATE lists SET status='published', updated_at=now() WHERE id=$1`, [l!.id]);
+    await audit(ACTOR, 'publish_list', `list:${l!.id}`, `${title} (${pos} books)`);
+    return { message: `List is live at /lists/${slug}.`, slug, missing_books: missing };
   }));
 
   s.registerTool('update_list', {
@@ -255,7 +252,7 @@ export function buildServer() {
     for (const x of a.add ?? []) {
       const b = await one(`SELECT id, status FROM books WHERE slug=$1 AND deleted_at IS NULL`, [x.book_slug]);
       if (!b) throw new PolicyError(`Book ${x.book_slug} not found`);
-      if (b.status !== 'published' && l.status === 'published') throw new PolicyError(`${x.book_slug} is still a draft waiting for the owner, so it can't go on a live list yet.`);
+      if (b.status !== 'published' && l.status === 'published') throw new PolicyError(`${x.book_slug} is not published, so it can't go on a live list.`);
       const pos = x.position ?? (await one(`SELECT coalesce(max(position)+1,0)::int AS p FROM list_items WHERE list_id=$1`, [l.id]))!.p;
       await q(`INSERT INTO list_items (list_id,book_id,position,note) VALUES ($1,$2,$3,$4) ON CONFLICT (list_id,book_id) DO UPDATE SET position=$3, note=$4`, [l.id, b.id, pos, x.note ?? '']);
       done.push(`added ${x.book_slug}`);

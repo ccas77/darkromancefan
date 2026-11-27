@@ -7,7 +7,7 @@ import { env } from '../../lib/env';
 const owner = isOwner(Astro.cookies);
 let d: any = {};
 if (owner) {
-  const [approvals, held, reports, suggestions, bookings, issues, log, counts] = await Promise.all([
+  const [approvals, held, reports, suggestions, bookings, issues, log, counts, recent, recentComments] = await Promise.all([
     q(`SELECT * FROM approvals WHERE status='pending' ORDER BY created_at`),
     q(`SELECT c.*, m.name, m.email, m.id AS mid, b.title AS book, l.title AS list FROM comments c JOIN commenters m ON m.id=c.commenter_id
        LEFT JOIN books b ON b.id=c.book_id LEFT JOIN lists l ON l.id=c.list_id WHERE c.status IN ('pending','flagged') ORDER BY c.created_at`),
@@ -18,8 +18,21 @@ if (owner) {
     q(`SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 60`),
     q(`SELECT (SELECT count(*)::int FROM signups) AS subs, (SELECT count(*)::int FROM comments WHERE status='approved') AS comments,
         (SELECT count(*)::int FROM ratings) AS ratings, (SELECT count(*)::int FROM clicks WHERE created_at > now()-interval '7 days') AS clicks7`),
+    q(`SELECT 'book' AS kind, b.id, b.slug, b.title || ' by ' || b.author AS label, b.status, max(a.created_at) AS at,
+          (SELECT count(*)::int FROM book_recs r WHERE r.book_id=b.id) AS recs
+        FROM audit_log a JOIN books b ON a.target = 'book:' || b.id
+        WHERE a.actor='claude' AND a.action IN ('publish_book','set_book_recs','import_book_recs') AND a.created_at > now()-interval '14 days' AND b.deleted_at IS NULL
+        GROUP BY b.id
+      UNION ALL
+      SELECT 'list', l.id, l.slug, l.title, l.status, max(a.created_at), 0
+        FROM audit_log a JOIN lists l ON a.target = 'list:' || l.id
+        WHERE a.actor='claude' AND a.action='publish_list' AND a.created_at > now()-interval '14 days' AND l.deleted_at IS NULL
+        GROUP BY l.id
+      ORDER BY at DESC LIMIT 60`),
+    q(`SELECT c.id, c.body, c.decided_at, m.name, b.title AS book FROM comments c JOIN commenters m ON m.id=c.commenter_id LEFT JOIN books b ON b.id=c.book_id
+        WHERE c.status='approved' AND c.decided_by='claude' AND c.decided_at > now()-interval '7 days' ORDER BY c.decided_at DESC LIMIT 40`),
   ]);
-  d = { approvals, held, reports, suggestions, bookings, issues, log, counts: counts[0] };
+  d = { approvals, held, reports, suggestions, bookings, issues, log, counts: counts[0], recent, recentComments };
 }
 const fmt = (x: any) => new Date(x).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const configured = Boolean(env('ADMIN_KEY') && env('ADMIN_KEY').length >= 24);
@@ -41,31 +54,54 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
         <form method="post" action="/api/admin/action"><input type="hidden" name="action" value="logout" /><button class="btn small ghost">Sign out</button></form></div>
       <p class="meta">Subscribers {d.counts.subs} · Live comments {d.counts.comments} · Ratings {d.counts.ratings} · Buy-link clicks (7 days) {d.counts.clicks7}</p>
 
-      <h2 id="approvals" style="margin-top:30px">Waiting for you ({d.approvals.length})</h2>
-      <p class="meta">Things Claude has prepared but isn't allowed to do on its own: borderline comments, new lists and new books.</p>
-      {(() => {
-        const bulk = d.approvals.filter((a: any) => a.kind === 'book' || a.kind === 'list');
-        return bulk.length > 1 && (
-          <form method="post" action="/api/admin/action" style="margin:10px 0 14px">
-            <input type="hidden" name="action" value="approval_all" /><input type="hidden" name="anchor" value="approvals" />
-            {bulk.map((a: any) => <input type="hidden" name="ids" value={a.id} />)}
-            <button class="btn small">Approve all {bulk.length} books and lists</button>
-            <span class="meta" style="margin-left:8px">Comments still need approving one by one.</span>
-          </form>
-        );
-      })()}
+      <h2 id="recent" style="margin-top:30px">What Claude published (last 14 days)</h2>
+      <p class="meta">Claude publishes and moderates on its own. Anything you don't like, take it down here.</p>
       <table>
-        {d.approvals.map((a: any) => (
-          <tr><td><span class="pill warn">{a.kind}</span></td><td>{a.summary}<div class="meta">requested by {a.requested_by}, {fmt(a.created_at)}</div></td>
-            <td style="white-space:nowrap">
-              <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small" name="action" value="approval_yes">Approve</button></form>
-              <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small ghost" name="action" value="approval_no">Decline</button></form>
+        {d.recent.map((r: any) => (
+          <tr><td><span class="pill">{r.kind}</span></td>
+            <td><a href={`/${r.kind === 'book' ? 'books' : 'lists'}/${r.slug}`}>{r.label}</a>{r.recs > 0 && <span class="meta"> · {r.recs} "books like" picks</span>}<div class="meta">{fmt(r.at)}{r.status !== 'published' && ' · unpublished'}</div></td>
+            <td style="white-space:nowrap">{r.status === 'published'
+              ? <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={r.id} /><input type="hidden" name="kind" value={r.kind} /><input type="hidden" name="anchor" value="recent" /><button class="btn small ghost" name="action" value="unpublish">Unpublish</button></form>
+              : <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={r.id} /><input type="hidden" name="kind" value={r.kind} /><input type="hidden" name="anchor" value="recent" /><button class="btn small" name="action" value="republish">Put back live</button></form>}
             </td></tr>
         ))}
-        {d.approvals.length === 0 && <tr><td class="meta">Nothing waiting.</td></tr>}
+        {d.recent.length === 0 && <tr><td class="meta">Nothing yet.</td></tr>}
       </table>
+      {d.recentComments.length > 0 && <>
+        <h3 id="recent-comments" style="margin-top:20px">Comments Claude approved (last 7 days)</h3>
+        <table>
+          {d.recentComments.map((c: any) => (
+            <tr><td><strong>{c.name}</strong> on {c.book}<div class="meta">{c.body.slice(0, 220)}</div></td>
+              <td><form method="post" action="/api/admin/action"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="anchor" value="recent-comments" /><button class="btn small ghost" name="action" value="comment_reject">Remove</button></form></td></tr>
+          ))}
+        </table>
+      </>}
 
-      <h2 id="queue" style="margin-top:30px">Comment queue ({d.held.length})</h2>
+      {d.approvals.length > 0 && <>
+        <h2 id="approvals" style="margin-top:30px">Needs you ({d.approvals.length})</h2>
+        <p class="meta">Only things with a legal risk, such as someone's personal details in a comment.</p>
+        {(() => {
+          const bulk = d.approvals.filter((a: any) => a.kind === 'book' || a.kind === 'list');
+          return bulk.length > 1 && (
+            <form method="post" action="/api/admin/action" style="margin:10px 0 14px">
+              <input type="hidden" name="action" value="approval_all" /><input type="hidden" name="anchor" value="approvals" />
+              {bulk.map((a: any) => <input type="hidden" name="ids" value={a.id} />)}
+              <button class="btn small">Approve all {bulk.length} books and lists</button>
+            </form>
+          );
+        })()}
+        <table>
+          {d.approvals.map((a: any) => (
+            <tr><td><span class="pill warn">{a.kind}</span></td><td>{a.summary}<div class="meta">from {a.requested_by}, {fmt(a.created_at)}</div></td>
+              <td style="white-space:nowrap">
+                <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small" name="action" value="approval_yes">Approve</button></form>
+                <form method="post" action="/api/admin/action" style="display:inline"><input type="hidden" name="id" value={a.id} /><input type="hidden" name="anchor" value="approvals" /><button class="btn small ghost" name="action" value="approval_no">Decline</button></form>
+              </td></tr>
+          ))}
+        </table>
+      </>}
+
+      <h2 id="queue" style="margin-top:30px">Comment queue ({d.held.length})</h2><p class="meta">Claude clears this every day. You never need to.</p>
       <table>
         {d.held.map((c: any) => (
           <tr><td><span class={`pill ${c.status === 'flagged' ? 'warn' : ''}`}>{c.status}</span>{c.flags.map((f: string) => <div class="meta">{f}</div>)}</td>

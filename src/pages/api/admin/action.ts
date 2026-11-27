@@ -13,8 +13,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       case 'approval_yes': await decideApproval(id, true); msg = 'Approved and live.'; break;
       case 'approval_no': await decideApproval(id, false); msg = 'Declined.'; break;
       case 'approval_all': { const n = await approveAllContent(f.getAll('ids').map(Number).filter(Boolean)); msg = `Approved ${n} and published.`; break; }
+      case 'unpublish':
+      case 'republish': {
+        const table = f.get('kind') === 'list' ? 'lists' : 'books'; const status = action === 'unpublish' ? 'draft' : 'published';
+        await q(`UPDATE ${table} SET status=$2, updated_at=now() WHERE id=$1`, [id, status]);
+        await audit('owner', `${action}_${table.slice(0, -1)}`, `${table.slice(0, -1)}:${id}`);
+        msg = action === 'unpublish' ? 'Taken down. It is no longer on the site.' : 'Back live.'; break;
+      }
       case 'comment_approve': await approveComment(id, 'owner'); break;
-      case 'comment_reject': await rejectComment(id, 'owner'); break;
+      case 'comment_reject': await rejectComment(id, 'owner'); msg = 'Comment removed.'; break;
       case 'comment_spam': await rejectComment(id, 'owner', 'spam'); break;
       case 'comment_restore': await restoreComment(id, 'owner'); break;
       case 'ban': await setBan(id, true, 'owner'); break;

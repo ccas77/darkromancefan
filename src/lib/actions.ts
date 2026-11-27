@@ -1,5 +1,5 @@
 // Shared back-end actions used by the admin page and the Claude connector.
-// The "Balanced" rules live here so they apply however an action is triggered.
+// Hands-off mode (owner's choice, 27 Nov 2026): Claude approves comments and publishes content itself.
 import { q, one, audit } from './db';
 
 export class PolicyError extends Error {}
@@ -7,13 +7,6 @@ export class PolicyError extends Error {}
 export async function approveComment(id: number, actor: string) {
   const c = await one(`SELECT * FROM comments WHERE id=$1`, [id]);
   if (!c) throw new PolicyError(`Comment ${id} not found`);
-  if (actor !== 'owner') {
-    const reports = await one(`SELECT count(*)::int AS n FROM reports WHERE comment_id=$1 AND NOT resolved`, [id]);
-    if (c.flags.length || reports!.n > 0 || c.status === 'flagged') {
-      throw new PolicyError(`Comment ${id} is borderline (${[...c.flags, reports!.n ? 'reported' : ''].filter(Boolean).join(', ')}). ` +
-        `Under the Balanced rules only the owner can approve it. Use escalate_comment to send it to the owner's approval queue.`);
-    }
-  }
   await q(`UPDATE comments SET status='approved', decided_at=now(), decided_by=$2 WHERE id=$1`, [id, actor]);
   await q(`UPDATE commenters SET trusted=true WHERE id=$1`, [c.commenter_id]);
   await q(`UPDATE reports SET resolved=true WHERE comment_id=$1`, [id]);
