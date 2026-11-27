@@ -8,6 +8,7 @@ import { approveComment, rejectComment, restoreComment, requestApproval, setBan,
 import { newsletterConfigured, createDraft, updateDraft, subscribe, PROVIDER } from './newsletter';
 import { slugify } from './util';
 import { saveGuide } from './recs-import';
+import { pingIndexNow } from './indexnow';
 
 const ACTOR = 'claude';
 const ok = (data: any) => ({ content: [{ type: 'text' as const, text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] });
@@ -146,6 +147,7 @@ export function buildServer() {
       [slug, a.title, a.author, a.series ?? null, a.blurb, a.tropes.map((t: string) => t.toLowerCase()), note, a.isbn ?? null, a.asin ?? null, a.cover_url ?? null, a.year ?? null]);
     await q(`UPDATE books SET status='published', updated_at=now() WHERE id=$1`, [b!.id]);
     await audit(ACTOR, 'publish_book', `book:${b!.id}`, `${a.title} by ${a.author}`);
+    await pingIndexNow([`/books/${b!.slug}`]);
     return `Book "${a.title}" is live at /books/${b!.slug}.`;
   }));
 
@@ -209,6 +211,7 @@ export function buildServer() {
     }
     if (intro !== undefined) await q(`UPDATE books SET recs_intro=$2, updated_at=now() WHERE id=$1`, [b.id, intro]);
     await audit(ACTOR, 'set_book_recs', `book:${b.id}`, { before: before?.n ?? 0, after: pos, sections: sections.map((x: any) => x.heading) });
+    await pingIndexNow([`/books/${slug}`]);
     return `Saved ${pos} recommendations in ${sections.length} sections for ${b.title}.` + (unlinked.length ? ` Not linked (no such book): ${unlinked.join(', ')}.` : '');
   }));
 
@@ -251,6 +254,7 @@ export function buildServer() {
     const row = await one(`SELECT id FROM guides WHERE slug=$1`, [g.slug]);
     const n = await saveGuide(q as any, row!.id, g);
     await audit(ACTOR, 'set_guide', `guide:${row!.id}`, `${g.h1} (${n} books)`);
+    await pingIndexNow([`/best/${g.slug}`, '/best']);
     return `Guide live at /best/${g.slug} with ${n} books.`;
   }));
 
@@ -281,6 +285,7 @@ export function buildServer() {
     }
     await q(`UPDATE lists SET status='published', updated_at=now() WHERE id=$1`, [l!.id]);
     await audit(ACTOR, 'publish_list', `list:${l!.id}`, `${title} (${pos} books)`);
+    await pingIndexNow([`/lists/${slug}`]);
     return { message: `List is live at /lists/${slug}.`, slug, missing_books: missing };
   }));
 
