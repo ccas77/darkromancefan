@@ -61,11 +61,12 @@ export async function decideApproval(id: number, approve: boolean) {
 
 /** Owner only: approve every pending book and list the owner saw on the page (books first, so lists show them). Comments are skipped. */
 export async function approveAllContent(ids: number[]) {
-  if (!ids.length) return;
+  if (!ids.length) return 0;
   const rows = await q(`SELECT id FROM approvals WHERE id = ANY($1::int[]) AND status='pending' AND kind IN ('book','list')
      ORDER BY CASE kind WHEN 'book' THEN 0 ELSE 1 END, created_at`, [ids]);
   for (const r of rows) await decideApproval(r.id, true);
   await audit('owner', 'approve_all', '', { count: rows.length });
+  return rows.length;
 }
 
 export async function setBan(commenterId: number, banned: boolean, actor: string) {

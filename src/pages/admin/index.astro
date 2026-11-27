@@ -32,6 +32,7 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
       <h2>Admin</h2>
       {!configured && <p class="flash">Set ADMIN_KEY (24+ characters) in the site settings to enable admin.</p>}
       {Astro.url.searchParams.get('bad') && <p class="flash">That key didn't match.</p>}
+      {Astro.url.searchParams.get('msg') && <p class="flash">{Astro.url.searchParams.get('msg')}</p>}
       <form class="form" method="post" action="/api/admin/login"><label>Admin key <input type="password" name="key" required /></label><div><button class="btn">Sign in</button></div></form>
     </div>
   ) : (
@@ -45,7 +46,7 @@ const commentActions = [['comment_approve', 'Approve'], ['comment_reject', 'Reje
       {(() => {
         const bulk = d.approvals.filter((a: any) => a.kind === 'book' || a.kind === 'list');
         return bulk.length > 1 && (
-          <form method="post" action="/api/admin/action" style="margin:10px 0 14px" onsubmit={`return confirm('Publish all ${bulk.length} books and lists below?')`}>
+          <form method="post" action="/api/admin/action" style="margin:10px 0 14px">
             <input type="hidden" name="action" value="approval_all" /><input type="hidden" name="anchor" value="approvals" />
             {bulk.map((a: any) => <input type="hidden" name="ids" value={a.id} />)}
             <button class="btn small">Approve all {bulk.length} books and lists</button>

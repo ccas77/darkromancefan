@@ -7,11 +7,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!isOwner(cookies)) return new Response('Unauthorised', { status: 401 });
   const f = await request.formData();
   const action = String(f.get('action')); const id = Number(f.get('id'));
+  let msg = '';
   try {
     switch (action) {
-      case 'approval_yes': await decideApproval(id, true); break;
-      case 'approval_no': await decideApproval(id, false); break;
-      case 'approval_all': await approveAllContent(f.getAll('ids').map(Number).filter(Boolean)); break;
+      case 'approval_yes': await decideApproval(id, true); msg = 'Approved and live.'; break;
+      case 'approval_no': await decideApproval(id, false); msg = 'Declined.'; break;
+      case 'approval_all': { const n = await approveAllContent(f.getAll('ids').map(Number).filter(Boolean)); msg = `Approved ${n} and published.`; break; }
       case 'comment_approve': await approveComment(id, 'owner'); break;
       case 'comment_reject': await rejectComment(id, 'owner'); break;
       case 'comment_spam': await rejectComment(id, 'owner', 'spam'); break;
@@ -22,6 +23,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       case 'revoke_connectors': await q(`UPDATE oauth_tokens SET revoked=true WHERE NOT revoked`); await audit('owner', 'revoke_connectors', ''); break;
       case 'logout': cookies.delete('drf_admin', { path: '/' }); break;
     }
-  } catch (e) { if (!(e instanceof PolicyError)) throw e; }
-  return new Response(null, { status: 303, headers: { Location: '/admin' + (f.get('anchor') ? '#' + f.get('anchor') : '') } });
+  } catch (e: any) {
+    if (!(e instanceof PolicyError)) { console.error('admin action failed', action, e); msg = `Something went wrong (${action}). Claude can see this in the logs.`; }
+    else msg = e.message;
+  }
+  const qs = msg ? '?msg=' + encodeURIComponent(msg) : '';
+  return new Response(null, { status: 303, headers: { Location: '/admin' + qs + (f.get('anchor') ? '#' + f.get('anchor') : '') } });
 };
