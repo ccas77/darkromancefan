@@ -118,3 +118,27 @@ export async function recsForBook(bookId: number) {
   }
   return { sections, count: rows.length };
 }
+
+/** Curated guide pages at /best/<slug>. */
+export async function guideBySlug(slug: string) {
+  const g = await one<any>(`SELECT * FROM guides WHERE slug=$1 AND status='published'`, [slug]);
+  if (!g) return null;
+  const rows = await q<Rec>(`SELECT r.*, b.slug AS linked_slug, b.cover_url AS linked_cover FROM guide_items r
+     LEFT JOIN books b ON b.id=r.linked_book_id AND b.status='published' AND b.deleted_at IS NULL
+     WHERE r.guide_id=$1 ORDER BY r.position, r.id`, [g.id]);
+  const sections: { heading: string; note: string; recs: Rec[] }[] = [];
+  for (const r of rows) {
+    let s = sections.find((x) => x.heading === r.section);
+    if (!s) sections.push(s = { heading: r.section, note: r.section_note, recs: [] });
+    s.recs.push(r);
+  }
+  return { guide: g, sections, count: rows.length };
+}
+
+export const allGuides = () =>
+  q<any>(`SELECT g.slug, g.h1, g.description, g.related_trope, g.updated_at, (SELECT count(*)::int FROM guide_items i WHERE i.guide_id=g.id) AS n,
+     (SELECT coalesce(b.cover_url, i.cover_url) FROM guide_items i LEFT JOIN books b ON b.id=i.linked_book_id WHERE i.guide_id=g.id ORDER BY i.position LIMIT 1) AS cover
+     FROM guides g WHERE g.status='published' ORDER BY g.updated_at DESC`);
+
+export const guidesForTrope = (trope: string) =>
+  q<any>(`SELECT slug, h1 FROM guides WHERE status='published' AND related_trope=$1 ORDER BY updated_at DESC`, [trope]);

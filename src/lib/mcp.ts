@@ -7,6 +7,7 @@ import { q, one, audit } from './db';
 import { approveComment, rejectComment, restoreComment, requestApproval, setBan, PolicyError } from './actions';
 import { newsletterConfigured, createDraft, updateDraft, subscribe, PROVIDER } from './newsletter';
 import { slugify } from './util';
+import { saveGuide } from './recs-import';
 
 const ACTOR = 'claude';
 const ok = (data: any) => ({ content: [{ type: 'text' as const, text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] });
@@ -210,6 +211,53 @@ export function buildServer() {
     await audit(ACTOR, 'set_book_recs', `book:${b.id}`, { before: before?.n ?? 0, after: pos, sections: sections.map((x: any) => x.heading) });
     return `Saved ${pos} recommendations in ${sections.length} sections for ${b.title}.` + (unlinked.length ? ` Not linked (no such book): ${unlinked.join(', ')}.` : '');
   }));
+
+  const recItem = z.object({
+    title: z.string().min(1).max(200), author: z.string().min(1).max(150), reason: z.string().min(20).max(400),
+    linked_slug: z.string().optional(), asin: z.string().regex(/^[A-Z0-9]{10}$/).optional(), isbn: z.string().regex(/^[0-9X]{10,13}$/).optional(),
+    cover_url: z.string().url().optional(),
+  });
+
+  s.registerTool('list_guides', {
+    description: 'All /best guide pages (curated long-tail landing pages) with their target keywords and book counts.',
+    inputSchema: {},
+  }, wrap(async () => q(`SELECT g.slug, g.h1, g.title, g.keywords, g.related_trope, g.updated_at,
+      (SELECT count(*)::int FROM guide_items i WHERE i.guide_id=g.id) AS books,
+      (SELECT count(*)::int FROM clicks c JOIN guide_items i ON i.id=c.guide_item_id WHERE i.guide_id=g.id) AS clicks
+      FROM guides g ORDER BY g.updated_at DESC`)));
+
+  s.registerTool('get_guide', {
+    description: 'One /best guide page in full: fields, FAQ and every book by section.',
+    inputSchema: { slug: z.string() },
+  }, wrap(async ({ slug }: any) => {
+    const g = await one(`SELECT * FROM guides WHERE slug=$1`, [slug]);
+    if (!g) throw new PolicyError('Guide not found');
+    const items = await q(`SELECT i.section, i.section_note, i.title, i.author, i.reason, i.asin, i.isbn, i.cover_url, b.slug AS linked_slug
+      FROM guide_items i LEFT JOIN books b ON b.id=i.linked_book_id WHERE i.guide_id=$1 ORDER BY i.position`, [g.id]);
+    return { ...g, items };
+  }));
+
+  s.registerTool('set_guide', {
+    description: `Create or replace a /best/<slug> guide page. It goes live straight away. Guides target ONE long-tail search cluster from keyword research (e.g. "hitman romance books", "dark romance where he kidnaps her"); put the exact phrases in keywords. The slug is the main keyword (e.g. "hitman-romance-books"). title (<= 65 chars, starts with the keyword, e.g. "Hitman Romance Books: 24 Dark Picks Beyond the BookTok Lists"), h1 (natural phrase with the keyword), description (140-160 chars). intro: 2-3 sentences that answer the search straight away. sections: 3-7, each heading a real modifier people search ("...with a happy ending", "MM ...", "... standalones", "less dark ..."). 15-30 books. faq: 3-6 questions people actually ask (use autocomplete "how/what/is" phrasings), answered in 1-3 sentences from facts you checked. Same accuracy and cover rules as set_book_recs: every book real and checked, reasons in your own words, look at every cover before using it (English edition of that exact book). Never claim Kindle Unlimited or audiobook availability.`,
+    inputSchema: {
+      slug: z.string().regex(/^[a-z0-9-]{3,80}$/), title: z.string().min(20).max(70), h1: z.string().min(5).max(120),
+      description: z.string().min(80).max(170), intro: z.string().min(60).max(700),
+      keywords: z.array(z.string().max(100)).min(1).max(30), related_trope: z.string().max(40).optional(),
+      faq: z.array(z.object({ q: z.string().min(8).max(160), a: z.string().min(20).max(600) })).max(8).optional(),
+      sections: z.array(z.object({ heading: z.string().min(5).max(120), note: z.string().max(300).optional(), recs: z.array(recItem).min(2).max(15) })).min(2).max(8),
+    },
+  }, wrap(async (g: any) => {
+    await q(`INSERT INTO guides (slug, title, h1, description) VALUES ($1,$2,$3,$4) ON CONFLICT (slug) DO NOTHING`, [g.slug, g.title, g.h1, g.description]);
+    const row = await one(`SELECT id FROM guides WHERE slug=$1`, [g.slug]);
+    const n = await saveGuide(q as any, row!.id, g);
+    await audit(ACTOR, 'set_guide', `guide:${row!.id}`, `${g.h1} (${n} books)`);
+    return `Guide live at /best/${g.slug} with ${n} books.`;
+  }));
+
+  s.registerTool('unpublish_guide', {
+    description: 'Take a guide page off the site (keeps it in the database).',
+    inputSchema: { slug: z.string() },
+  }, wrap(async ({ slug }: any) => { await q(`UPDATE guides SET status='draft' WHERE slug=$1`, [slug]); await audit(ACTOR, 'unpublish_guide', slug); return 'Unpublished.'; }));
 
   s.registerTool('list_lists', {
     description: 'All reading lists (published and drafts) with their books.',

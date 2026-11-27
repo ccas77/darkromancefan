@@ -1,0 +1,97 @@
+---
+import Base from '../layouts/Base.astro';
+import Signup from '../components/Signup.astro';
+import Cover from '../components/Cover.astro';
+import { q } from '../lib/db';
+import { tropeHref } from '../lib/tropes';
+
+// Explainer page targeting "what is dark romance" / "dark romance meaning" / "dark romance books for beginners".
+const startSlugs = ['haunting-adeline', 'lights-out', 'twisted-love', 'the-maddest-obsession', 'butcher-blackbird', 'corrupt', 'i-will-break-you', 'captive-in-the-dark'];
+const books = await q<any>(`SELECT slug, title, author, cover_url FROM books WHERE slug = ANY($1) AND status='published' AND deleted_at IS NULL`, [startSlugs]);
+const bySlug = Object.fromEntries(books.map((b) => [b.slug, b]));
+const pick = (slug: string) => bySlug[slug];
+const site = 'https://www.darkromancefan.com';
+
+const ladder = [
+  { slug: 'twisted-love', note: 'Dip a toe in. An obsessive, possessive hero, but the darkness is mostly emotional.' },
+  { slug: 'lights-out', note: 'A masked stalker played for laughs and heat. She is fully into it, which makes it the friendliest stalker romance around.' },
+  { slug: 'the-maddest-obsession', note: 'Mafia world, a hero with a dangerous fixation, and plenty of banter.' },
+  { slug: 'butcher-blackbird', note: 'Two serial killers fall for each other. Gory, but the tone is playful.' },
+  { slug: 'corrupt', note: 'Masks, revenge and a hero who has been waiting years. Properly dark now.' },
+  { slug: 'haunting-adeline', note: 'The book most people mean when they say dark romance. Stalking, obsession and very little restraint.' },
+  { slug: 'i-will-break-you', note: 'A death-row killer and the woman who ran his fan club. Mind games all the way down.' },
+  { slug: 'captive-in-the-dark', note: 'The deep end: a captive story that does not soften anything.' },
+];
+
+const faq = [
+  { q: 'What is dark romance?', a: 'Dark romance is a romance subgenre where the love story runs through taboo or disturbing territory: obsession, stalking, kidnapping, crime, violence, power imbalance and morally grey or outright villainous heroes. It is still a romance, so the relationship is the centre of the story and most books end with the couple together.' },
+  { q: 'What is the difference between dark romance and regular romance?', a: 'In most romance the hero is safe even when he is grumpy. In dark romance he usually is not: he may be a killer, a criminal or the person the heroine should be running from, and the book does not pretend otherwise. The appeal is the danger, the intensity and seeing two people choose each other anyway.' },
+  { q: 'Do dark romance books have happy endings?', a: 'Most do. The genre is still romance, so the large majority end with a happily ever after or a happy for now, even if the road there is brutal. Some series end a book on a cliffhanger and resolve it in the next one, which is why duets are so common.' },
+  { q: 'Is dark romance always spicy?', a: 'No. Most dark romance is explicit, but darkness and spice are separate scales. A book can be very dark with little on-page sex, or very spicy without being dark. That is why we rate both separately on every book page.' },
+  { q: 'Where should I start with dark romance?', a: 'Start lighter and work down. Twisted Love and Lights Out give you an obsessive hero without the heaviest material, then mafia and revenge books like The Maddest Obsession and Corrupt, before the classics like Haunting Adeline and Captive in the Dark.' },
+  { q: 'Why do people read dark romance?', a: 'For the intensity. Readers talk about the thrill of danger on the page, heroes who would burn the world down for one person, and exploring fantasies in fiction that nobody would want in real life. Fiction is a safe place to feel all of it.' },
+];
+
+const jsonLd = [
+  { '@context': 'https://schema.org', '@type': 'Article', headline: 'What is dark romance? Meaning, tropes and where to start', author: { '@type': 'Organization', name: 'Dark Romance Fan', url: `${site}/` },
+    publisher: { '@type': 'Organization', name: 'Dark Romance Fan', logo: { '@type': 'ImageObject', url: `${site}/og.png` } }, datePublished: '2026-11-27', dateModified: '2026-11-27', mainEntityOfPage: `${site}/what-is-dark-romance` },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${site}/` }, { '@type': 'ListItem', position: 2, name: 'What is dark romance?', item: `${site}/what-is-dark-romance` } ] },
+];
+const tropes = [
+  ['stalker', 'He watches, he follows, he knows where she sleeps.'],
+  ['captive', 'One of them is not free to leave, at least at first.'],
+  ['mafia', 'Crime families, blood debts and arranged marriages.'],
+  ['bully', 'He made her life hell, usually at school, and now he wants her.'],
+  ['why choose', 'She does not pick one man. She keeps all of them.'],
+  ['serial killer', 'The hero, the heroine or both have a body count.'],
+  ['masked man', 'Identity hidden, intentions very clear.'],
+  ['dark academia', 'Elite schools, secret societies and cruel games.'],
+  ['villain retelling', 'Fairy tales rewritten so the villain gets the girl.'],
+  ['age gap', 'An older, more powerful hero and the imbalance that comes with it.'],
+];
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
+---
+<Base title="What Is Dark Romance? Meaning, Tropes & Where to Start | Dark Romance Fan" description="What dark romance means, how it differs from regular romance, the tropes that define it, and a reading ladder from lighter picks to the darkest classics." jsonLd={jsonLd}>
+  <div class="wrap narrow pagehead">
+    <div class="crumbs"><a href="/">Home</a> › What is dark romance?</div>
+    <h1>What is dark romance?</h1>
+    <p class="lede">Dark romance is romance where the love story goes through the places other romance avoids: obsession, stalking, captivity, crime and violence, with heroes who are dangerous, morally grey or outright villains. It is still a love story at heart, and most of these books still end with the couple together.</p>
+  </div>
+
+  <article class="wrap narrow prose">
+    <h2>Dark romance meaning, in plain words</h2>
+    <p>Call it romance with the safety off. In a typical romance the hero might be grumpy or arrogant, but you always know he is safe. In dark romance you are not supposed to feel safe. He might be a hitman, a mafia heir, a stalker or a killer on death row, and the book lets that be true instead of explaining it away.</p>
+    <p>What makes it romance rather than horror or a thriller is where the story is pointed: at the relationship. The danger, the power games and the moral lines that get crossed all exist to push two people together. Readers come for that intensity and for heroes who would burn everything down for one person.</p>
+
+    <h2>Dark romance vs. other romance</h2>
+    <ul>
+      <li><strong>Regular romance:</strong> conflict comes from misunderstandings, pride or circumstance. The hero is fundamentally a good man.</li>
+      <li><strong>Morally grey romance:</strong> the hero has done bad things, but the story mostly redeems or softens him.</li>
+      <li><strong>Dark romance:</strong> the hero (or heroine) stays dangerous, the relationship often starts somewhere it shouldn't, and the book explores taboo themes on the page.</li>
+      <li><strong>Spice is a separate scale.</strong> Most dark romance is explicit, but a book can be pitch black with little sex or very spicy without being dark. That's why every book here gets two ratings: spice and darkness.</li>
+    </ul>
+
+    <h2>The tropes that define dark romance</h2>
+    <ul class="tropelist">
+      {tropes.map(([t, d]) => <li><a href={tropeHref(t)}><strong>{t[0].toUpperCase() + t.slice(1)}</strong></a>: {d}</li>)}
+    </ul>
+    <p class="meta">Browse every trope on the site at <a href="/tropes">dark romance by trope</a>, or go straight to the <a href="/best">reading guides</a>.</p>
+
+    <h2>Dark romance books for beginners: a reading ladder</h2>
+    <p>The easiest way in is to start lighter and work your way down. Each step is darker than the one before.</p>
+    <ol class="ladder">
+      {ladder.map((l) => { const b = pick(l.slug); return b && (
+        <li><a href={`/books/${b.slug}`}><Cover book={b} /></a><div><h3><a href={`/books/${b.slug}`}>{b.title}</a></h3><div class="by">by {b.author}</div><p>{l.note}</p></div></li>
+      ); })}
+    </ol>
+    <p>Found the one you love? Every book page has a <strong>"Books like…"</strong> section with what to read next, including MM and sapphic picks. Try <a href="/books/haunting-adeline#books-like">books like Haunting Adeline</a>.</p>
+
+    <h2>Questions readers ask</h2>
+    <div class="faq">
+      {faq.map((f) => <details open><summary>{f.q}</summary><p>{f.a}</p></details>)}
+    </div>
+  </article>
+  <Signup source="what-is-dark-romance" />
+</Base>

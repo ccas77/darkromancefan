@@ -1,7 +1,7 @@
 import { env } from './env';
 import schema from './schema.sql?raw';
 import { seed } from './seed';
-import { importRecs } from './recs-import';
+import { importRecs, importGuides } from './recs-import';
 
 type Row = Record<string, any>;
 type Runner = (text: string, params?: any[]) => Promise<Row[]>;
@@ -35,6 +35,7 @@ async function init() {
   const [{ n }] = await runner('SELECT count(*)::int AS n FROM books');
   if (n === 0) await seed(runner);
   await importRecs(runner);
+  await importGuides(runner);
 }
 
 export async function q<T = Row>(text: string, params: any[] = []): Promise<T[]> {

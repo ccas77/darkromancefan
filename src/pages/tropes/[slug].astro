@@ -2,22 +2,27 @@
 import Base from '../../layouts/Base.astro';
 import BookRow from '../../components/BookRow.astro';
 import Signup from '../../components/Signup.astro';
-import { allTropes, booksWithTrope, ratingsForBooks } from '../../lib/data';
+import { allTropes, booksWithTrope, ratingsForBooks, guidesForTrope } from '../../lib/data';
 import { slugify } from '../../lib/util';
-import { tropeHref, tropeTitle } from '../../lib/tropes';
+import { tropeHref, tropeTitle, TROPE_ALIASES, MIN_TROPE_BOOKS } from '../../lib/tropes';
+const alias = TROPE_ALIASES[Astro.params.slug!];
+if (alias) return Astro.redirect(`/tropes/${alias}`, 301);
 const tropes = await allTropes();
 const match = tropes.find((t) => slugify(t.trope) === Astro.params.slug);
 if (!match) return new Response('Not found', { status: 404 });
 const books = await booksWithTrope(match.trope);
 const ratings = await ratingsForBooks(books.map((b) => b.id));
 const name = tropeTitle(match.trope);
+const guides = await guidesForTrope(match.trope);
+const thin = books.length < MIN_TROPE_BOOKS;
 const related = tropes.filter((t) => t.trope !== match.trope).slice(0, 12);
 const jsonLd = { '@context': 'https://schema.org', '@type': 'ItemList', name: `${name} dark romance books`,
   itemListElement: books.map((b, i) => ({ '@type': 'ListItem', position: i + 1, url: new URL(`/books/${b.slug}`, Astro.site).toString(), name: b.title })) };
 ---
-<Base title={`${name} dark romance books | Dark Romance Fan`} description={`${books.length} dark romance ${books.length === 1 ? 'book' : 'books'} tagged ${match.trope}, with reader ratings for spice and darkness.`} jsonLd={jsonLd}>
-  <div class="wrap pagehead"><div class="eyebrow"><a href="/tropes">Tropes</a></div><h1>{name}</h1>
-    <p class="lede">{books.length} {books.length === 1 ? 'book' : 'books'} tagged <strong>{match.trope}</strong>, rated by readers for spice and darkness.</p></div>
+<Base title={`${name} Romance Books: ${books.length} Dark Romance ${books.length === 1 ? 'Pick' : 'Picks'} | Dark Romance Fan`} description={`The best ${match.trope} dark romance books, rated by readers for spice and darkness: ${books.slice(0, 3).map((b) => b.title).join(', ')}${books.length > 3 ? ' and more' : ''}.`} jsonLd={jsonLd} noindex={thin}>
+  <div class="wrap pagehead"><div class="crumbs"><a href="/">Home</a> › <a href="/tropes">Tropes</a></div><h1>{name} romance books</h1>
+    <p class="lede">{books.length} dark romance {books.length === 1 ? 'book' : 'books'} tagged <strong>{match.trope}</strong>, rated by readers for spice and darkness.</p>
+    {guides.length > 0 && <p class="meta">Want more? {guides.map((g: any, i: number) => <>{i > 0 && ' · '}<a href={`/best/${g.slug}`}>{g.h1}</a></>)}</p>}</div>
   <section class="wrap narrow">
     {books.map((b, i) => <BookRow book={b} index={i} rating={ratings[b.id]} />)}
   </section>

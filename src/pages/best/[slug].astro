@@ -1,0 +1,53 @@
+---
+import Base from '../../layouts/Base.astro';
+import Signup from '../../components/Signup.astro';
+import RecSections from '../../components/RecSections.astro';
+import { guideBySlug, allGuides } from '../../lib/data';
+import { tropeHref, tropeTitle } from '../../lib/tropes';
+const data = await guideBySlug(Astro.params.slug!);
+if (!data) return new Response('Not found', { status: 404 });
+const { guide: g, sections, count } = data;
+const site = 'https://www.darkromancefan.com';
+const faq: { q: string; a: string }[] = Array.isArray(g.faq) ? g.faq : [];
+const others = (await allGuides()).filter((x: any) => x.slug !== g.slug).slice(0, 8);
+const jsonLd: any[] = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${site}/` },
+    { '@type': 'ListItem', position: 2, name: 'Guides', item: `${site}/best` },
+    { '@type': 'ListItem', position: 3, name: g.h1, item: `${site}/best/${g.slug}` } ] },
+  { '@context': 'https://schema.org', '@type': 'ItemList', name: g.h1, numberOfItems: count,
+    itemListElement: sections.flatMap((x) => x.recs).map((r, i) => ({ '@type': 'ListItem', position: i + 1,
+      item: { '@type': 'Book', name: r.title, author: { '@type': 'Person', name: r.author }, ...(r.linked_slug ? { url: `${site}/books/${r.linked_slug}` } : {}) } })) },
+];
+if (faq.length) jsonLd.push({ '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) });
+const updated = new Date(g.updated_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+---
+<Base title={g.title} description={g.description} jsonLd={jsonLd} image={sections[0]?.recs[0]?.linked_cover || sections[0]?.recs[0]?.cover_url}>
+  <div class="wrap pagehead">
+    <div class="crumbs"><a href="/">Home</a> › <a href="/best">Guides</a></div>
+    <h1>{g.h1}</h1>
+    <p class="lede">{g.intro}</p>
+    <p class="meta">{count} books · updated {updated}{g.related_trope && <> · more in <a href={tropeHref(g.related_trope)}>{tropeTitle(g.related_trope)}</a></>}</p>
+  </div>
+  <section class="recs" style="margin-top:0">
+    <div class="wrap">
+      <RecSections sections={sections} buy="/go/g/" level={2} />
+      <p class="meta" style="margin-top:20px">We may earn a commission when you buy through these links, at no extra cost to you.</p>
+    </div>
+  </section>
+  {faq.length > 0 && (
+    <section class="wrap narrow faq">
+      <h2>Questions readers ask</h2>
+      {faq.map((f) => <details open><summary>{f.q}</summary><p>{f.a}</p></details>)}
+    </section>
+  )}
+  {others.length > 0 && (
+    <section class="wrap narrow" style="padding-top:0">
+      <div class="eyebrow">More guides</div>
+      <ul class="tags">{others.map((o: any) => <li><a class="tag" href={`/best/${o.slug}`}>{o.h1}</a></li>)}</ul>
+    </section>
+  )}
+  <Signup source={`guide:${g.slug}`} />
+</Base>

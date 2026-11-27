@@ -254,3 +254,17 @@ a.tag:hover { border-color: var(--blood); color: var(--blood); }
 .rec p { font-size: .93rem; margin: 0 0 10px; color: var(--ink-2); }
 .recbuy { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 560px) { .reclist { grid-template-columns: 1fr; } .rec { grid-template-columns: 70px 1fr; } .rec .cover { width: 70px; } }
+.recgroup .rechead { font-size: 1.45rem; margin-bottom: 2px; }
+.faq details { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin: 8px 0; }
+.faq summary { font-weight: 700; cursor: pointer; }
+.faq p { margin: 8px 0 0; color: var(--ink-2); }
+.crumbs { font-size: .82rem; color: var(--muted); margin-bottom: 6px; }
+.crumbs a { color: var(--muted); }
+.prose h2 { margin-top: 34px; }
+.prose ul, .prose ol { padding-left: 1.2em; }
+.prose li { margin: 6px 0; }
+.ladder { list-style: none; padding: 0 !important; counter-reset: step; }
+.ladder li { display: grid; grid-template-columns: 70px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ladder .cover { width: 70px; }
+.ladder h3 { font: 700 1.05rem/1.3 var(--sans); margin: 0; }
+.ladder p { margin: 6px 0 0; }

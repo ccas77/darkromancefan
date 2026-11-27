@@ -11,7 +11,11 @@ const ratings = await ratingsForBooks(books.map((b) => b.id));
 const fan = featured.length >= 3 ? featured.slice(0, 3) : books.slice(0, 3);
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
 ---
-<Base title="Dark Romance Fan: dark romance books by trope, rated by readers">
+<Base title="Dark Romance Fan: dark romance books by trope, rated by readers" description="Find your next dark romance: stalker, mafia, captive, why choose and more. Books like your favourites, reader ratings for spice and darkness, and a weekly email." jsonLd={[
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Dark Romance Fan', url: 'https://www.darkromancefan.com/',
+    potentialAction: { '@type': 'SearchAction', target: 'https://www.darkromancefan.com/search?q={search_term_string}', 'query-input': 'required name=search_term_string' } },
+  { '@context': 'https://schema.org', '@type': 'Organization', name: 'Dark Romance Fan', url: 'https://www.darkromancefan.com/', logo: 'https://www.darkromancefan.com/og.png', email: 'hello@darkromancefan.com' },
+]}>
   <div class="hero"><div class="wrap">
     <div>
       <div class="eyebrow">For readers who like it dark</div>
@@ -21,6 +25,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-re
         <a class="btn light" href="/lists">Browse the lists</a>
         <a class="btn outline-light" href="#signup">Get the weekly email</a>
       </div>
+      <p class="meta" style="margin-top:14px"><a href="/what-is-dark-romance" style="color:inherit">New here? What is dark romance, and where to start →</a></p>
       <div class="hero-stats">
         <div><strong>{counts.books}</strong>books rated</div>
         <div><strong>{counts.lists}</strong>trope lists</div>

@@ -5,7 +5,7 @@ import Signup from '../../components/Signup.astro';
 import { publishedLists, listCovers } from '../../lib/data';
 const [lists, covers] = await Promise.all([publishedLists(), listCovers()]);
 ---
-<Base title="Dark romance reading lists by trope | Dark Romance Fan">
+<Base title="Dark romance reading lists by trope | Dark Romance Fan" description="Dark romance reading lists by trope: stalker and captive, mafia, dark academia, bully and dark fairy tale retellings, each with reader ratings for spice and darkness.">
   <div class="wrap pagehead"><div class="eyebrow">Reading lists</div><h1>Dark romance by trope</h1>
     <p class="lede">Pick your poison. Every list comes with reader ratings for spice and darkness.</p></div>
   <section class="wrap"><div class="lists">

@@ -1,0 +1,23 @@
+---
+import Base from '../../layouts/Base.astro';
+import { allGuides } from '../../lib/data';
+const guides = await allGuides();
+const site = 'https://www.darkromancefan.com';
+const jsonLd = { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Dark romance reading guides',
+  itemListElement: guides.map((g: any, i: number) => ({ '@type': 'ListItem', position: i + 1, url: `${site}/best/${g.slug}`, name: g.h1 })) };
+---
+<Base title="Dark romance reading guides: the best books for every kink, trope and mood | Dark Romance Fan" description="Hand-picked dark romance reading guides: hitmen, masked men, kidnapping, why choose, monster romance and more, with books you won't find on every other list." jsonLd={jsonLd}>
+  <div class="wrap pagehead"><div class="eyebrow">Guides</div><h1>Dark romance reading guides</h1>
+    <p class="lede">Hand-picked books for exactly what you're craving, from the BookTok favourites to the ones nobody else is talking about.</p></div>
+  <section class="wrap">
+    <div class="lists">
+      {guides.map((g: any) => (
+        <a class="listcard" href={`/best/${g.slug}`}>
+          
+          <h3>{g.h1}</h3><p>{g.description}</p><span class="meta">{g.n} books</span>
+        </a>
+      ))}
+      {guides.length === 0 && <p class="meta">Guides are on their way.</p>}
+    </div>
+  </section>
+</Base>

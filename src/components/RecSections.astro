@@ -1,0 +1,34 @@
+---
+import Cover from './Cover.astro';
+// Curated recommendation sections, shared by "Books like X" on book pages and the /best guides.
+const { sections, buy, level = 3 } = Astro.props as { sections: { heading: string; note: string; recs: any[] }[]; buy: string; level?: 2 | 3 };
+const H = level === 2 ? 'h2' : 'h3';
+---
+        <nav class="jump" aria-label="Jump to a section">{sections.map((x, i) => <a href={`#recs-${i}`}>{x.heading}</a>)}</nav>
+        {sections.map((x, i) => (
+          <div class="recgroup" id={`recs-${i}`}>
+            <H class="rechead">{x.heading}</H>
+            {x.note && <p class="meta">{x.note}</p>}
+            <ol class="reclist">
+              {x.recs.map((r) => {
+                const cover = r.linked_cover || r.cover_url;
+                return (
+                  <li class="rec">
+                    {r.linked_slug
+                      ? <a href={`/books/${r.linked_slug}`}><Cover book={{ title: r.title, author: r.author, cover_url: cover }} /></a>
+                      : <Cover book={{ title: r.title, author: r.author, cover_url: cover }} />}
+                    <div>
+                      <h4>{r.linked_slug ? <a href={`/books/${r.linked_slug}`}>{r.title}</a> : r.title}</h4>
+                      <div class="by">by {r.author}</div>
+                      <p>{r.reason}</p>
+                      <div class="recbuy">
+                        <a class="btn small" href={`${buy}${r.id}`} rel="sponsored nofollow">Buy on Amazon</a>
+                        {r.linked_slug && <a class="btn small ghost" href={`/books/${r.linked_slug}`}>Ratings & tropes</a>}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ))}

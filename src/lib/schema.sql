@@ -209,3 +209,41 @@ ALTER TABLE clicks ADD COLUMN IF NOT EXISTS rec_id INT
 ALTER TABLE books ADD COLUMN IF NOT EXISTS recs_version INT NOT NULL DEFAULT 0
 ;
 UPDATE books SET content_note='' WHERE content_note LIKE 'Dark romance with themes many readers find disturbing%'
+;
+-- Guides: curated long-tail landing pages at /best/<slug> (e.g. "Hitman romance books").
+CREATE TABLE IF NOT EXISTS guides (
+  id SERIAL PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  h1 TEXT NOT NULL,
+  description TEXT NOT NULL,
+  intro TEXT NOT NULL DEFAULT '',
+  faq JSONB NOT NULL DEFAULT '[]',
+  related_trope TEXT,
+  keywords TEXT[] NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'published',
+  version INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS guide_items (
+  id SERIAL PRIMARY KEY,
+  guide_id INT NOT NULL REFERENCES guides(id) ON DELETE CASCADE,
+  section TEXT NOT NULL,
+  section_note TEXT NOT NULL DEFAULT '',
+  position INT NOT NULL DEFAULT 0,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  linked_book_id INT REFERENCES books(id) ON DELETE SET NULL,
+  asin TEXT,
+  isbn TEXT,
+  cover_url TEXT
+);
+CREATE INDEX IF NOT EXISTS guide_items_guide ON guide_items (guide_id, position);
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS guide_item_id INT;
+-- Merge duplicate trope tags into the wording readers search for.
+UPDATE books SET tropes = ARRAY(SELECT DISTINCT CASE t
+    WHEN 'masked hero' THEN 'masked man' WHEN 'morally grey' THEN 'morally grey hero' WHEN 'obsession' THEN 'obsessive hero'
+    WHEN 'serial killer hero' THEN 'serial killer' WHEN 'possessive hero' THEN 'possessive hero' ELSE t END FROM unnest(tropes) t)
+  WHERE tropes && ARRAY['masked hero','morally grey','obsession','serial killer hero']
