@@ -207,3 +207,5 @@ ALTER TABLE books ADD COLUMN IF NOT EXISTS recs_intro TEXT;
 ALTER TABLE clicks ADD COLUMN IF NOT EXISTS rec_id INT
 ;
 ALTER TABLE books ADD COLUMN IF NOT EXISTS recs_version INT NOT NULL DEFAULT 0
+;
+UPDATE books SET content_note='' WHERE content_note LIKE 'Dark romance with themes many readers find disturbing%'

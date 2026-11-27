@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { q, one, audit } from './db';
 import { approveComment, rejectComment, restoreComment, requestApproval, setBan, PolicyError } from './actions';
-import { newsletterConfigured, createDraft, subscribe, PROVIDER } from './newsletter';
+import { newsletterConfigured, createDraft, updateDraft, subscribe, PROVIDER } from './newsletter';
 import { slugify } from './util';
 
 const ACTOR = 'claude';
@@ -143,7 +143,7 @@ export function buildServer() {
     inputSchema: bookFields,
   }, wrap(async (a: any) => {
     let slug = slugify(a.title); if (await one(`SELECT 1 FROM books WHERE slug=$1`, [slug])) slug = slugify(`${a.title} ${a.author}`);
-    const note = a.content_note ?? "Dark romance with themes many readers find disturbing. Check the author's own content warnings before you start.";
+    const note = a.content_note ?? '';
     const b = await one(`INSERT INTO books (slug,title,author,series,blurb,tropes,content_note,isbn,asin,cover_url,year) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, slug`,
       [slug, a.title, a.author, a.series ?? null, a.blurb, a.tropes.map((t: string) => t.toLowerCase()), note, a.isbn ?? null, a.asin ?? null, a.cover_url ?? null, a.year ?? null]);
     await audit(ACTOR, 'create_book_draft', `book:${b!.id}`, a.title);
@@ -152,7 +152,7 @@ export function buildServer() {
   }));
 
   s.registerTool('update_book', {
-    description: 'Small edits to an existing book: typos, blurb, tropes, series, content note, ISBN/ASIN. Cannot change publish status.',
+    description: 'Small edits to an existing book: typos, blurb, tropes, series, content note, ISBN/ASIN. Cannot change publish status. Content notes are only for specific, useful facts a dark romance reader would want (e.g. on-page SA, cheating, no HEA, cliffhanger); never generic disclaimers.',
     inputSchema: { slug: z.string(), changes: z.object(bookFields).partial() },
   }, wrap(async ({ slug, changes }: any) => {
     const b = await one(`SELECT * FROM books WHERE slug=$1 AND deleted_at IS NULL`, [slug]);
@@ -336,6 +336,11 @@ export function buildServer() {
     for (const b of booking_ids) await q(`UPDATE promo_bookings SET status='scheduled', issue_id=$2 WHERE id=$1`, [b, id]);
     let provider = 'Kit not connected: the owner can copy the draft from the admin page.';
     if (newsletterConfigured()) {
+      const existing = (await one(`SELECT beehiiv_post_id AS kid FROM newsletter_issues WHERE id=$1`, [id]))?.kid;
+      if (existing && /^\d+$/.test(existing)) {
+        const u = await updateDraft(existing, title, mdToHtml(content_md));
+        if (u.ok) { await audit(ACTOR, 'save_newsletter_draft', `issue:${id}`, title); return { issue_id: id, status: 'draft', provider: 'Existing Kit draft updated (not scheduled or sent).', html_preview: mdToHtml(content_md).slice(0, 2000) }; }
+      }
       const r = await createDraft(title, mdToHtml(content_md));
       if (r.ok) { await q(`UPDATE newsletter_issues SET beehiiv_post_id=$2 WHERE id=$1`, [id, String(r.data?.broadcast?.id || 'created')]); provider = 'Draft created in Kit (not scheduled or sent).'; }
       else provider = `Kit didn't accept the draft (HTTP ${r.status}). The owner can copy it from the admin page.`;

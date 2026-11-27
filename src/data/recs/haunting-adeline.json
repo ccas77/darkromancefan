@@ -20,7 +20,7 @@
     {
      "title": "I Will Mend You",
      "author": "Gigi Styx",
-     "reason": "The second half of the Pen Pal duet, picking up straight after I Will Break You. Unreliable narrators and disturbing themes, so check the trigger warnings first.",
+     "reason": "The second half of the Pen Pal duet, straight after I Will Break You. Unreliable narrators, and it gets even more twisted.",
      "isbn": "1965738087",
      "asin": "1965738087",
      "cover_url": "https://covers.openlibrary.org/b/id/15231075-L.jpg"
@@ -96,7 +96,7 @@
   },
   {
    "heading": "Darker than Haunting Adeline",
-   "note": "Check content warnings carefully before you start any of these.",
+   "note": "Where Zade and Addie were just the warm-up.",
    "recs": [
     {
      "title": "Hunting Adeline",
@@ -115,7 +115,7 @@
      "author": "Kitty Thomas",
      "isbn": "0981943667",
      "cover_url": "https://covers.openlibrary.org/b/id/10719189-L.jpg",
-     "reason": "A short, notorious captive story about control and conditioning. Much darker than Adeline: only for readers who know their limits."
+     "reason": "A short, notorious captive story about control and conditioning. Much darker than Adeline, and one of the genre's most talked-about extremes."
     }
    ]
   },
@@ -193,5 +193,5 @@
    ]
   }
  ],
- "version": 2
+ "version": 3
 }

@@ -2,7 +2,7 @@
 // Covers come from Open Library. Blurbs are original. ISBNs/ASINs still to add (Claude can do this via the connector).
 type Runner = (text: string, params?: any[]) => Promise<any[]>;
 
-const NOTE = 'Dark romance with themes many readers find disturbing. Check the author\'s own content warnings before you start.';
+const NOTE = '';
 
 const COVERS: Record<string, [number, number]> = {"i-will-break-you": [14836395, 2024], "haunting-adeline": [12992962, 2021], "twist-me": [8851882, 2014], "captive-in-the-dark": [10521960, 2011], "bound-by-honor": [10558598, 2014], "the-maddest-obsession": [11699161, 2019], "den-of-vipers": [15115000, 2020], "god-of-malice": [13291765, 2022], "corrupt": [10226443, 2015], "the-ritual": [15104748, 2021]};
 

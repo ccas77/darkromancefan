@@ -27,6 +27,11 @@ export async function subscribe(email: string, source: string) {
   return r;
 }
 
+/** Updates an existing DRAFT broadcast in Kit (still unscheduled and unsent). */
+export function updateDraft(id: string, subject: string, html: string) {
+  return call('PUT', `/broadcasts/${encodeURIComponent(id)}`, { subject, content: html, public: false, send_at: null });
+}
+
 /** Creates a DRAFT broadcast in Kit. send_at null + public false = never sent or scheduled. */
 export function createDraft(subject: string, html: string) {
   return call('POST', '/broadcasts', { subject, content: html, public: false, send_at: null, description: 'Drafted by Claude for review' });

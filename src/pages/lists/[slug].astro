@@ -20,7 +20,7 @@ if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-ma
     <p class="lede">{list.intro}</p>
   </div>
   <div class="wrap narrow">
-    <div class="note">Every book here is dark romance for adult readers. Spice and darkness ratings come from readers. Check each author's content warnings before you start.</div>
+    <div class="note">Spice and darkness ratings come from readers.</div>
     {books.map((b, i) => <BookRow book={b} index={i} rating={ratings[b.id]} />)}
 
     <section id="suggest">
