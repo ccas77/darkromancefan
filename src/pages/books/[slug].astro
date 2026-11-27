@@ -6,14 +6,24 @@ import Cover from '../../components/Cover.astro';
 import Meters from '../../components/Meters.astro';
 import { coverAbs } from '../../lib/covers';
 import { tropeHref } from '../../lib/tropes';
-import { bookBySlug, listsForBook, ratingSummary, tropeTally, reactionTally, similarBooks, ratingsForBooks, SPICE, DARK } from '../../lib/data';
+import { bookBySlug, listsForBook, ratingSummary, tropeTally, reactionTally, similarBooks, ratingsForBooks, recsForBook, SPICE, DARK } from '../../lib/data';
 const book = await bookBySlug(Astro.params.slug!);
 if (!book) return new Response('Not found', { status: 404 });
-const [lists, rating, tropes, reacts, similar] = await Promise.all([listsForBook(book.id), ratingSummary(book.id), tropeTally(book.id), reactionTally(book.id), similarBooks(book.id, book.tropes)]);
+const [lists, rating, tropes, reacts, similar, recs] = await Promise.all([listsForBook(book.id), ratingSummary(book.id), tropeTally(book.id), reactionTally(book.id), similarBooks(book.id, book.tropes), recsForBook(book.id)]);
 const simRatings = await ratingsForBooks(similar.map((b) => b.id));
 const voted = new Map(tropes.map((t) => [t.trope, t.n]));
 const allTropes = [...new Set([...book.tropes, ...tropes.map((t) => t.trope)])].sort((a, b) => (voted.get(b) || 0) - (voted.get(a) || 0));
 const jsonLd: any = { '@context': 'https://schema.org', '@type': 'Book', name: book.title, author: { '@type': 'Person', name: book.author }, image: coverAbs(book.cover_url, Astro.site) };
+const site = String(Astro.site || 'https://www.darkromancefan.com').replace(/\/$/, '');
+const recsLd = recs.count ? { '@context': 'https://schema.org', '@type': 'ItemList', name: `Books like ${book.title}`, numberOfItems: recs.count,
+  itemListElement: recs.sections.flatMap((x) => x.recs).map((r, i) => ({ '@type': 'ListItem', position: i + 1,
+    item: { '@type': 'Book', name: r.title, author: { '@type': 'Person', name: r.author }, ...(r.linked_slug ? { url: `${site}/books/${r.linked_slug}` } : {}) } })) } : null;
+const pageTitle = recs.count
+  ? `${book.title} by ${book.author}: ${recs.count} books like it, spice level & tropes | Dark Romance Fan`
+  : `${book.title} by ${book.author}: spice level, tropes & reader ratings | Dark Romance Fan`;
+const pageDesc = recs.count
+  ? `${recs.count} books like ${book.title}, from less dark reads to darker ones, MM and sapphic picks. ${book.blurb}`.slice(0, 300)
+  : `${book.blurb} Reader ratings for spice and darkness, trope tags and comments.`;
 if (rating.n >= 3) jsonLd.aggregateRating = { '@type': 'AggregateRating', ratingValue: rating.overall, ratingCount: rating.n, bestRating: 5, worstRating: 1 };
 const scales = [
   { name: 'overall', label: 'Overall', opts: ['', 'Meh', 'Fine', 'Good', 'Loved it', 'Obsessed'] },
@@ -22,7 +32,7 @@ const scales = [
 ];
 if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
 ---
-<Base title={`${book.title} by ${book.author}: spice level, tropes & reader ratings | Dark Romance Fan`} description={`${book.blurb} Reader ratings for spice and darkness, trope tags and comments.`} jsonLd={jsonLd} image={book.cover_url}>
+<Base title={pageTitle} description={pageDesc} jsonLd={recsLd ? [jsonLd, recsLd] : jsonLd} image={book.cover_url}>
   <div class="wrap">
     <div class="bookhead">
       <Cover book={book} eager />
@@ -42,10 +52,51 @@ if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-ma
           <a class="btn ghost" href="#rate">Rate it</a>
         </div>
         {book.content_note && <div class="note"><strong>Content note.</strong> {book.content_note}</div>}
+        {recs.count > 0 && <p class="meta"><a href="#books-like">{recs.count} books like {book.title} ↓</a></p>}
         {lists.length > 0 && <p class="meta">Featured in: {lists.map((l, i) => <>{i > 0 && ' · '}<a href={`/lists/${l.slug}`}>{l.title}</a></>)}</p>}
       </div>
     </div>
   </div>
+
+
+  {recs.count > 0 && (
+    <section id="books-like" class="recs">
+      <div class="wrap">
+        <div class="eyebrow">What to read next</div>
+        <h2>Books like {book.title}</h2>
+        {book.recs_intro && <p class="lede">{book.recs_intro}</p>}
+        <nav class="jump" aria-label="Jump to a section">{recs.sections.map((x, i) => <a href={`#recs-${i}`}>{x.heading}</a>)}</nav>
+        {recs.sections.map((x, i) => (
+          <div class="recgroup" id={`recs-${i}`}>
+            <h3>{x.heading}</h3>
+            {x.note && <p class="meta">{x.note}</p>}
+            <ol class="reclist">
+              {x.recs.map((r) => {
+                const cover = r.linked_cover || r.cover_url;
+                return (
+                  <li class="rec">
+                    {r.linked_slug
+                      ? <a href={`/books/${r.linked_slug}`}><Cover book={{ title: r.title, author: r.author, cover_url: cover }} /></a>
+                      : <Cover book={{ title: r.title, author: r.author, cover_url: cover }} />}
+                    <div>
+                      <h4>{r.linked_slug ? <a href={`/books/${r.linked_slug}`}>{r.title}</a> : r.title}</h4>
+                      <div class="by">by {r.author}</div>
+                      <p>{r.reason}</p>
+                      <div class="recbuy">
+                        <a class="btn small" href={`/go/rec/${r.id}`} rel="sponsored nofollow">Buy on Amazon</a>
+                        {r.linked_slug && <a class="btn small ghost" href={`/books/${r.linked_slug}`}>Ratings & tropes</a>}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        ))}
+        <p class="meta">Always check content warnings before you start. We may earn a commission when you buy through these links, at no extra cost to you.</p>
+      </div>
+    </section>
+  )}
 
   <div class="wrap narrow">
     <section id="tropes" style="padding-top:20px">
@@ -101,7 +152,7 @@ if (!Astro.url.search) Astro.response.headers.set('Cache-Control', 'public, s-ma
   {similar.length > 0 && (
     <section style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
       <div class="wrap">
-        <div class="section-head"><div><div class="eyebrow">If you liked this</div><h2>Similar dark romance</h2></div></div>
+        <div class="section-head"><div><div class="eyebrow">If you liked this</div><h2>More on Dark Romance Fan</h2></div></div>
         <div class="shelf">
           {similar.map((b) => <a class="tile" href={`/books/${b.slug}`}><Cover book={b} /><h3>{b.title}</h3><div class="by">{b.author}</div><Meters rating={simRatings[b.id]} /></a>)}
         </div>

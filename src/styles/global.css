@@ -235,3 +235,22 @@ a.tag:hover { border-color: var(--blood); color: var(--blood); }
   header.site nav { width: 100%; gap: 14px; justify-content: space-between; }
   header.site nav a { font-size: .88rem; white-space: nowrap; }
 }
+
+/* Books like X */
+.recs { background: var(--paper-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 28px; }
+.recs .lede { font-size: 1.08rem; color: var(--ink-2); max-width: 760px; }
+.recs .jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 8px; }
+.recs .jump a { font: 600 .78rem var(--sans); padding: 5px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--ink-2); text-decoration: none; }
+.recs .jump a:hover { border-color: var(--ink); }
+.recgroup { padding-top: 26px; scroll-margin-top: 80px; }
+.recgroup h3 { font-size: 1.45rem; margin-bottom: 2px; }
+.reclist { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.rec { display: grid; grid-template-columns: 86px 1fr; gap: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+.rec .cover { width: 86px; }
+.rec .cover.ph { font-size: .72rem; padding: 6px; }
+.rec h4 { font: 700 1.02rem/1.3 var(--sans); margin: 0; }
+.rec h4 a { color: var(--ink); }
+.rec .by { font-size: .84rem; color: var(--muted); margin-bottom: 6px; }
+.rec p { font-size: .93rem; margin: 0 0 10px; color: var(--ink-2); }
+.recbuy { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 560px) { .reclist { grid-template-columns: 1fr; } .rec { grid-template-columns: 70px 1fr; } .rec .cover { width: 70px; } }

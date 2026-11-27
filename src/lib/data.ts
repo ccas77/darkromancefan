@@ -101,3 +101,20 @@ export const searchBooks = (term: string) => {
        OR EXISTS (SELECT 1 FROM unnest(b.tropes) t WHERE t ILIKE $1))
      ORDER BY (b.title ILIKE $1) DESC, (b.author ILIKE $1) DESC, b.featured DESC, b.created_at DESC LIMIT 40`, [like]);
 };
+
+export interface Rec { id: number; section: string; section_note: string; position: number; title: string; author: string; reason: string;
+  asin: string | null; isbn: string | null; cover_url: string | null; linked_slug: string | null; linked_cover: string | null }
+
+/** Curated "books like X" recommendations, grouped by section in display order. */
+export async function recsForBook(bookId: number) {
+  const rows = await q<Rec>(`SELECT r.*, b.slug AS linked_slug, b.cover_url AS linked_cover FROM book_recs r
+     LEFT JOIN books b ON b.id=r.linked_book_id AND b.status='published' AND b.deleted_at IS NULL
+     WHERE r.book_id=$1 ORDER BY r.position, r.id`, [bookId]);
+  const sections: { heading: string; note: string; recs: Rec[] }[] = [];
+  for (const r of rows) {
+    let s = sections.find((x) => x.heading === r.section);
+    if (!s) sections.push(s = { heading: r.section, note: r.section_note, recs: [] });
+    s.recs.push(r);
+  }
+  return { sections, count: rows.length };
+}

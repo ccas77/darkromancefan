@@ -166,6 +166,54 @@ export function buildServer() {
     return `Updated ${b.title}: ${keys.join(', ')}.`;
   }));
 
+  s.registerTool('get_book_recs', {
+    description: 'The "Books like X" recommendations currently on a book page, by section.',
+    inputSchema: { slug: z.string() },
+  }, wrap(async ({ slug }: any) => {
+    const b = await one(`SELECT id, title, recs_intro FROM books WHERE slug=$1 AND deleted_at IS NULL`, [slug]);
+    if (!b) throw new PolicyError('Book not found');
+    const rows = await q(`SELECT r.section, r.section_note, r.title, r.author, r.reason, r.asin, r.isbn, r.cover_url, lb.slug AS linked_slug,
+        (SELECT count(*)::int FROM clicks c WHERE c.rec_id=r.id) AS clicks
+      FROM book_recs r LEFT JOIN books lb ON lb.id=r.linked_book_id WHERE r.book_id=$1 ORDER BY r.position, r.id`, [b.id]);
+    return { book: b.title, intro: b.recs_intro, recs: rows };
+  }));
+
+  s.registerTool('set_book_recs', {
+    description: `Replace the "Books like X" section on a book page (a small edit: live straight away). This section is how the site wins long-tail searches such as "books like Haunting Adeline but less dark", "MM books like ...", "sapphic books like ...", so name each section after a real search phrase, e.g. "Books like Haunting Adeline but less dark". Rules: every rec must be a real, published book you have checked (title, author, what happens). Write reasons in your own words, one or two sentences, saying why a fan of this book would like it; never copy blurbs or reviews. Go beyond the usual BookTok titles: mix well-known picks with lesser-known ones. Don't claim Kindle Unlimited or audiobook availability unless you checked it today. Use linked_slug when the book has a page on this site. asin = the English Kindle or print ASIN if known (else isbn, else a search link is used). cover_url only from Open Library (https://covers.openlibrary.org/b/id/<cover_i>-L.jpg).`,
+    inputSchema: {
+      slug: z.string(),
+      intro: z.string().max(600).optional(),
+      sections: z.array(z.object({
+        heading: z.string().min(5).max(120),
+        note: z.string().max(300).optional(),
+        recs: z.array(z.object({
+          title: z.string().min(1).max(200), author: z.string().min(1).max(150), reason: z.string().min(20).max(400),
+          linked_slug: z.string().optional(), asin: z.string().regex(/^[A-Z0-9]{10}$/).optional(), isbn: z.string().regex(/^[0-9X]{10,13}$/).optional(),
+          cover_url: z.string().url().optional(),
+        })).min(1).max(15),
+      })).min(1).max(10),
+    },
+  }, wrap(async ({ slug, intro, sections }: any) => {
+    const b = await one(`SELECT id, title FROM books WHERE slug=$1 AND deleted_at IS NULL`, [slug]);
+    if (!b) throw new PolicyError('Book not found');
+    const before = await one(`SELECT count(*)::int AS n FROM book_recs WHERE book_id=$1`, [b.id]);
+    await q(`DELETE FROM book_recs WHERE book_id=$1`, [b.id]);
+    let pos = 0; const unlinked: string[] = [];
+    for (const sec of sections) for (const r of sec.recs) {
+      let linked: number | null = null;
+      if (r.linked_slug) {
+        const lb = await one(`SELECT id FROM books WHERE slug=$1 AND deleted_at IS NULL`, [r.linked_slug]);
+        if (lb) linked = lb.id; else unlinked.push(r.linked_slug);
+      }
+      await q(`INSERT INTO book_recs (book_id, section, section_note, position, title, author, reason, linked_book_id, asin, isbn, cover_url)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [b.id, sec.heading, sec.note ?? '', pos++, r.title, r.author, r.reason, linked, r.asin ?? null, r.isbn ?? null, r.cover_url ?? null]);
+    }
+    if (intro !== undefined) await q(`UPDATE books SET recs_intro=$2, updated_at=now() WHERE id=$1`, [b.id, intro]);
+    await audit(ACTOR, 'set_book_recs', `book:${b.id}`, { before: before?.n ?? 0, after: pos, sections: sections.map((x: any) => x.heading) });
+    return `Saved ${pos} recommendations in ${sections.length} sections for ${b.title}.` + (unlinked.length ? ` Not linked (no such book): ${unlinked.join(', ')}.` : '');
+  }));
+
   s.registerTool('list_lists', {
     description: 'All reading lists (published and drafts) with their books.',
     inputSchema: {},

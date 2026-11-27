@@ -184,3 +184,24 @@ CREATE TABLE IF NOT EXISTS cover_cache (
   data BYTEA NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- "Books like X": curated recommendations shown on each book page. Recs don't need their own
+-- book page. When one does exist (linked_book_id) the card links to it.
+CREATE TABLE IF NOT EXISTS book_recs (
+  id SERIAL PRIMARY KEY,
+  book_id INT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  section TEXT NOT NULL,
+  section_note TEXT NOT NULL DEFAULT '',
+  position INT NOT NULL DEFAULT 0,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  linked_book_id INT REFERENCES books(id) ON DELETE SET NULL,
+  asin TEXT,
+  isbn TEXT,
+  cover_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS book_recs_book ON book_recs (book_id, position);
+ALTER TABLE books ADD COLUMN IF NOT EXISTS recs_intro TEXT;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS rec_id INT
