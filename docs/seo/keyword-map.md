@@ -28,7 +28,7 @@ Work down this list. When a page is done, write DONE + date in the status column
 | 19 | Age gap dark romance | /best/age-gap-dark-romance-books | 280 | age gap dark romance books; dark age gap romance books; age gap forbidden romance books |  |
 | 20 | Werewolf / shifter dark romance | /best/werewolf-dark-romance-books | 220 | werewolf dark romance books; dark shifter romance books |  |
 | 21 | Psychological thriller romance | /best/psychological-thriller-romance-books | 170 | psychological thriller romance books |  |
-| 22 | Christmas dark romance (seasonal: publish by early Dec) | /best/christmas-dark-romance-books | 140 | christmas dark romance books; christmas stalker romance books | timely |
+| 22 | Christmas dark romance (seasonal: publish by early Dec) | /best/christmas-dark-romance-books | 140 | christmas dark romance books; christmas stalker romance books | DONE 28 Nov |
 | 23 | Priest romance | /best/priest-romance-books | 120 | priest romance books; forbidden priest romance books; priest dark romance books |  |
 | 24 | Dark fae / fantasy | /best/dark-fae-romance-books | 110 | dark fae romance books; dark fantasy romance books (49,500, very competitive) |  |
 | 25 | Villain romance / villain gets the girl | /best/villain-romance-books | 90 | villain romance books; villain gets the girl; dark romance books where the villain gets the girl |  |
